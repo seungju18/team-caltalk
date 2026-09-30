@@ -1,0 +1,23 @@
+# 의존성
+node_modules/
+
+# 빌드 결과 (frontend/dist, PRD 7.2)
+dist/
+
+# 환경 변수: .env.example만 올린다 (5번 문서 5.1)
+.env
+.env.*
+!.env.example
+
+# 로그
+*.log
+
+# 개인 도구 설정·산출물
+.claude/settings.local.json
+.playwright-mcp/
+
+# OS·에디터
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
