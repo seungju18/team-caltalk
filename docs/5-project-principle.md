@@ -14,8 +14,11 @@
 | 0.6  | seungju18 | `useQuery`/`useMutation` 결과·훅 반환값 명칭 규칙 추가 (3.3)                                                                                                                                           | 2026-09-30       |
 | 0.7  | seungju18 | 문서 정합성 점검: 기준 문서 버전 갱신, 완료 여부 이름을 ERD와 같은 `isCompleted`(`is_completed`)로 변경(3.1), 인증 전 경로에 헬스체크 추가(5.2), docs 범위 1~7번(6.1), 화면 목록 불일치 해소(6.2, 7장) | 2026-09-30 14:47 |
 | 0.8  | seungju18 | 8번 문서 8장 결정 반영: 자동화 테스트 미도입(4장 10), 백엔드 TS 실행 방식(6.3), 7장의 자동화 테스트·TS 실행·KPI-04 항목 해소, 기준 PRD v0.10                                                           | 2026-09-30 15:06 |
+| 0.9  | seungju18 | 5.2 인증 전 경로에 개발 전용 API 문서(`/api-docs`) 예외 추가                                                                                                                                           | 2026-10-01       |
+| 1.0  | seungju18 | 선택 환경 변수 `CORS_ORIGIN`으로 CORS 허용 출처 설정 추가 (5.1, 5.3)                                                                                                                                   | 2026-10-01       |
+| 1.1  | seungju18 | 백엔드 자동화 테스트(`node:test`) 반영(4장 10), 6.1 docs 범위 1~8번, 6.3 디렉토리 구조를 실제 파일에 맞춤, 기준 PRD v0.11, 시나리오 v0.4, 와이어프레임 v0.3                                           | 2026-10-01       |
 
-> 기준 문서: `CLAUDE.md`, `docs/1-domain-definition.md` v0.7 (이하 "도메인 정의서"), `docs/2-PRD.md` v0.10 (이하 "PRD"), `docs/3-user-scenario.md` v0.3 (이하 "시나리오"), `docs/4-wireframes.md` v0.2 (이하 "와이어프레임"). 기술 스택·프론트엔드 코드 규칙·인증 토큰·NFR·일정은 PRD, 규칙(BR)·수용 기준(AC)·미결정(OI)은 도메인 정의서를 원본으로 하고 이 문서에서는 ID로만 참조한다. `(가정)` 표시는 위 문서에 근거가 없어 이 문서에서 정한 내용이다.
+> 기준 문서: `CLAUDE.md`, `docs/1-domain-definition.md` v0.7 (이하 "도메인 정의서"), `docs/2-PRD.md` v0.11 (이하 "PRD"), `docs/3-user-scenario.md` v0.4 (이하 "시나리오"), `docs/4-wireframes.md` v0.3 (이하 "와이어프레임"). 기술 스택·프론트엔드 코드 규칙·인증 토큰·NFR·일정은 PRD, 규칙(BR)·수용 기준(AC)·미결정(OI)은 도메인 정의서를 원본으로 하고 이 문서에서는 ID로만 참조한다. `(가정)` 표시는 위 문서에 근거가 없어 이 문서에서 정한 내용이다.
 
 ## 0. 이 문서의 범위
 
@@ -136,14 +139,14 @@ PRD 7.4를 그대로 따른다. 여기서는 위치와 검증 방법만 정한�
 7. **화면 확인은 375px / 768px / 1280px 세 폭으로 한다** (PRD 8장 Day 2 오후, NFR-12·13). 지원 브라우저는 NFR-14를 따른다.
 8. **접근성 테스트는 하지 않는다** (NFR-15 범위 외).
 9. **타입 오류 0건을 유지한다.** 프론트·백 모두 `tsc --noEmit`이 통과해야 한다 (가정).
-10. **자동화 테스트 프레임워크는 도입하지 않는다.** 서버 판정은 `backend/requests/` 요청 모음, 화면은 AC 체크리스트로 확인한다 (8번 문서 8장, BE-11, IT-01).
+10. **백엔드 자동화 테스트는 Node 내장 `node:test`로 하고 테스트 프레임워크 의존성은 추가하지 않는다.** `backend/test/*.test.ts`를 `npm test`(`--experimental-test-coverage`, `--test-concurrency=1`)로 실행하며, 각 테스트는 `db/seed.sql`로 개발 DB를 초기화한다. `backend/requests/` 요청 모음은 수동 확인용으로 유지하고, 화면은 AC 체크리스트로 확인한다 (8번 문서 8장, BE-11, IT-01).
 
 ## 5. 설정 / 보안 / 운영 원칙
 
 ### 5.1 설정
 
 - 비밀 값과 환경별 값은 환경 변수로만 주입하고 코드·저장소에 넣지 않는다. 서명 키는 `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` 두 개이며 서로 다른 값이다 (PRD 6.4).
-- 그 외 환경 변수는 `DATABASE_URL`, `PORT`, `NODE_ENV`(운영에서 쿠키 `Secure`)로 한다 (가정).
+- 그 외 환경 변수는 `DATABASE_URL`, `PORT`, `NODE_ENV`(운영에서 쿠키 `Secure`)로 한다 (가정). 선택 환경 변수 `CORS_ORIGIN`(쉼표 구분 허용 출처)을 두며, 비우면 CORS 헤더를 보내지 않는다.
 - 환경 변수 읽기와 필수 값 검증은 `backend/src/config.ts` 한 곳에서만 한다. 필수 값이 없으면 서버는 시작하지 않는다 (가정).
 - `.env`는 Git에 올리지 않고 `.env.example`(값 없는 목록)만 올린다 (가정).
 - 튜닝 값(bcrypt cost 10, 풀 최대 20, 본문 100KB, 토큰 만료 15분/7일)은 PRD 값을 `config.ts`에 상수로 둔다 (NFR-05, NFR-07, NFR-10, PRD 6.4).
@@ -158,11 +161,11 @@ PRD 7.4를 그대로 따른다. 여기서는 위치와 검증 방법만 정한�
 | Refresh 쿠키 경로는 `/api/auth/refresh`, `/api/auth/logout`에만 전송되도록 `Path=/api/auth`로 둔다. 쿠키 읽기는 `cookie-parser`                                              | PRD 6.4, 7.2         |
 | 비밀번호·토큰·`Authorization` 헤더 값은 로그에 남기지 않는다                                                                                                                 | (가정)               |
 | 로그인 남용 방지(P1)는 메모리 카운터로 단순 구현하며 `middleware/loginLimit.ts`에 둔다                                                                                       | NFR-11               |
-| 인증 필요한 라우터는 `middleware/auth.ts`를 라우터 단위로 일괄 적용한다. 인증 전 경로는 회원가입·로그인·재발급·로그아웃·헬스체크뿐이다                                       | BR-01, UC-01·UC-02   |
+| 인증 필요한 라우터는 `middleware/auth.ts`를 라우터 단위로 일괄 적용한다. 인증 전 경로는 회원가입·로그인·재발급·로그아웃·헬스체크뿐이다. 예외: 개발 환경 전용 API 문서 `/api-docs` | BR-01, UC-01·UC-02   |
 
 ### 5.3 운영
 
-- **배포:** 단일 서버에서 Express가 `frontend/dist`를 정적 서빙하고 `/api`를 처리한다. 같은 출처이므로 CORS를 설정하지 않는다 (PRD 7.2).
+- **배포:** 단일 서버에서 Express가 `frontend/dist`를 정적 서빙하고 `/api`를 처리한다. 같은 출처이므로 운영에서는 `CORS_ORIGIN`을 비워 CORS를 쓰지 않는다 (PRD 7.2). 개발 등 다른 출처에서 직접 호출할 때만 `CORS_ORIGIN`에 출처를 넣는다 (`app.ts`, 의존성 없이 직접 헤더 설정).
 - **개발 환경:** Vite 개발 서버는 `/api`를 백엔드로 프록시해 운영과 같은 출처처럼 동작시킨다 (가정, 쿠키 경로 유지 목적).
 - **DB 스키마:** `backend/db/schema.sql` 한 파일로 관리하고 수동 적용한다. 마이그레이션 도구는 도입하지 않는다 (가정, PRD 8장 "스키마 SQL 파일").
 - **헬스체크:** Day 1 완료 기준에 따라 헬스체크 API를 둔다 (PRD 8장). 경로는 `/api/health`다 (가정).
@@ -175,7 +178,7 @@ PRD 7.4를 그대로 따른다. 여기서는 위치와 검증 방법만 정한�
 ```
 team-caltalk/
 ├── CLAUDE.md
-├── docs/            # 1~7번 문서
+├── docs/            # 1~8번 문서
 ├── frontend/        # React 앱 (Vite)
 ├── backend/         # Express API 서버
 └── loadtest/        # k6 스크립트, 부하용 시드 (NFR-03)
@@ -245,21 +248,25 @@ backend/
 ├── package.json
 ├── tsconfig.json
 ├── .env.example
+├── swagger.yaml              # API 명세 원본 (요청·응답·상태 코드)
 ├── db/
-│   └── schema.sql            # 테이블·제약·인덱스 (users, categories, todos, refresh_tokens)
-├── requests/                 # 수동 API 확인용 요청 모음 (Day 1 산출물)
+│   ├── schema.sql            # 테이블·제약·인덱스 (users, categories, todos, refresh_tokens)
+│   └── seed.sql              # 개발용 시드(도메인 5.2 예시 데이터). 자동화 테스트의 DB 초기화에도 쓴다
+├── requests/                 # 수동 API 확인용 요청 모음 (Day 1 산출물: auth.http, ac.http)
+├── test/                     # node:test 자동화 테스트 (*.test.ts, helpers.ts)
 └── src/
     ├── server.ts             # 진입점: config 로드, app 시작(listen)
-    ├── app.ts                # Express 조립: 본문 100KB 제한, cookie-parser, 라우터 마운트, 정적 서빙, 오류 핸들러
+    ├── app.ts                # Express 조립: CORS 헤더(`CORS_ORIGIN`), 본문 100KB 제한, cookie-parser, 라우터 마운트, 정적 서빙, 오류 핸들러
     ├── config.ts             # 환경 변수 읽기·검증, 상수(PRD 값)
     ├── db.ts                 # pg Pool, DATE 문자열 파서(OID 1082), 트랜잭션 헬퍼
-    ├── errors.ts             # 오류 클래스(400 검증 / 401 인증 / 404 없음)
+    ├── errors.ts             # 오류 클래스(400 검증 / 401 인증 / 404 없음, 그 외 상태는 `HttpError`)
     ├── routes/
     │   ├── authRoutes.ts         # 가입, 로그인, 재발급, 로그아웃
     │   ├── userRoutes.ts         # 내 정보 수정, 비밀번호 변경 (P1)
     │   ├── categoryRoutes.ts     # 목록, 생성, 이름 변경, 삭제
     │   ├── todoRoutes.ts         # 등록, 수정, 삭제, 목록(필터), 월 조회
-    │   └── healthRoutes.ts       # 헬스체크
+    │   ├── healthRoutes.ts       # 헬스체크
+    │   └── docsRoutes.ts         # 개발 환경 전용 /api-docs (CDN swagger-ui로 swagger.yaml 표시)
     ├── services/
     │   ├── authService.ts        # 가입(+기본 카테고리), 로그인, 토큰 발급·회전·폐기
     │   ├── userService.ts

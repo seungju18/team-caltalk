@@ -18,7 +18,7 @@
 | [6-arch-diagram.md](docs/6-arch-diagram.md)           | 기술 아키텍처 다이어그램: 브라우저·서버·DB 구성                                                                                    |
 | [7-erd.md](docs/7-erd.md)                             | ERD: 테이블·컬럼·제약·인덱스 (PostgreSQL 17 물리 모델)                                                                             |
 | [8-plan.md](docs/8-plan.md)                           | 작업 실행 계획(WBS): DB·BE·FE·IT Task, 완료 조건, 의존 관계, API 경로, 착수 전 결정 사항                                           |
-| [schema.sql](docs/schema.sql)                         | DDL: 7-erd 기준 테이블 생성 SQL                                                                                                    |
+| [schema.sql](backend/db/schema.sql)                   | DDL: 7-erd 기준 테이블 생성 SQL                                                                                                    |
 
 - 도메인 규칙·용어는 도메인 정의서가 원본이다. PRD는 ID로 참조한다.
 - 문서를 수정하면 각 문서의 "문서 변경 이력" 표에 한 줄 추가한다.

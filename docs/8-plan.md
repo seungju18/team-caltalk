@@ -8,8 +8,18 @@
 | ---- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
 | 0.1  | seungju18 | 작업 실행 계획 초안 작성                                                                                                                               | 2026-09-30       |
 | 0.2  | seungju18 | 8장 착수 전 확인 사항 6건 결정 및 관련 문서 반영, 3장 API 경로 확정(상세는 `swagger.json`), BE-01·BE-06·BE-09·BE-10·FE-08을 결정·`swagger.json`에 맞춤 | 2026-09-30 15:06 |
+| 0.3  | seungju18 | DB-01~DB-04 완료 조건 체크 (DB-03 BE-05 로그인 항목 제외)                                                                                              | 2026-09-30       |
+| 0.4  | seungju18 | 스키마 파일 이동에 따라 기준 문서·DB-01 관련 경로를 `backend/db/schema.sql`로 수정                                                                     | 2026-09-30       |
+| 0.5  | seungju18 | BE-01 완료 조건 체크                                                                                                                                   | 2026-09-30       |
+| 0.6  | seungju18 | BE-02 완료 조건 체크                                                                                                                                   | 2026-10-01       |
+| 0.7  | seungju18 | BE-03~BE-11 완료 조건 체크 (BE-09 변경 기기 유지 항목 제외)                                                                                            | 2026-10-01       |
+| 0.8  | seungju18 | BE-09 변경 기기 유지 조건에 재사용 감지 예외를 명시하고 체크                                                                                           | 2026-10-01       |
+| 0.9  | seungju18 | DB-03 시드 계정 로그인 항목 체크                                                                                                                       | 2026-10-01       |
+| 1.0  | seungju18 | BE-03 인증 예외에 개발 전용 API 문서(`/api-docs`) 추가                                                                                                 | 2026-10-01       |
+| 1.1  | seungju18 | API 명세 위치를 `backend/swagger.yaml`로 수정, 자동화 테스트·CORS 환경 변수·응답 세부(3장) 반영, 기준 문서 버전 갱신                                   | 2026-10-01       |
+| 1.2  | seungju18 | 3장 응답 세부를 `swagger.yaml`에 반영했음을 표기                                                                                                       | 2026-10-01       |
 
-> 기준 문서: `docs/1-domain-definition.md` v0.7, `docs/2-PRD.md` v0.10, `docs/3-user-scenario.md` v0.3, `docs/4-wireframes.md` v0.2, `docs/5-project-principle.md` v0.8, `docs/6-arch-diagram.md` v0.2, `docs/7-erd.md` v0.2, `docs/schema.sql`, `docs/swagger.json`. 기능·규칙은 기준 문서를 원본으로 하고 이 문서에서는 ID로만 참조한다. `(가정)` 표시는 기준 문서에 근거가 없어 이 문서에서 정한 내용이다.
+> 기준 문서: `docs/1-domain-definition.md` v0.7, `docs/2-PRD.md` v0.11, `docs/3-user-scenario.md` v0.4, `docs/4-wireframes.md` v0.3, `docs/5-project-principle.md` v1.1, `docs/6-arch-diagram.md` v0.3, `docs/7-erd.md` v0.3, `backend/db/schema.sql`, `backend/swagger.yaml`. 기능·규칙은 기준 문서를 원본으로 하고 이 문서에서는 ID로만 참조한다. `(가정)` 표시는 기준 문서에 근거가 없어 이 문서에서 정한 내용이다.
 
 ## 1. 계획 원칙
 
@@ -81,7 +91,7 @@ flowchart LR
 
 ## 3. API 경로
 
-기준 문서는 `/api/auth/refresh`, `/api/auth/logout`, `/api/health`만 정했다. BE와 FE가 독립적으로 작업하도록 나머지 경로를 이 문서에서 아래로 확정한다. 요청·응답 스키마와 상태 코드는 `docs/swagger.json`이 원본이다. 응답 JSON 필드는 camelCase, 상태 값은 `not_started` / `in_progress` / `done` / `overdue`다 (5번 문서 3.1).
+기준 문서는 `/api/auth/refresh`, `/api/auth/logout`, `/api/health`만 정했다. BE와 FE가 독립적으로 작업하도록 나머지 경로를 이 문서에서 아래로 확정한다. 요청·응답 스키마와 상태 코드는 `backend/swagger.yaml`이 원본이다. 응답 JSON 필드는 camelCase, 상태 값은 `not_started` / `in_progress` / `done` / `overdue`다 (5번 문서 3.1).
 
 | 메서드 | 경로                                       | 기능                                | 인증 | Task  |
 | ------ | ------------------------------------------ | ----------------------------------- | ---- | ----- |
@@ -103,21 +113,29 @@ flowchart LR
 | GET    | `/api/todos?filter=&categoryId=&today=`    | 목록·필터 (FR-10)                   | 필요 | BE-08 |
 | GET    | `/api/todos/calendar?month=YYYY-MM&today=` | 월 조회 (FR-11)                     | 필요 | BE-08 |
 
+- `/api-docs`는 개발 환경(`NODE_ENV !== production`)에서만 열리고 인증이 없다. CDN의 swagger-ui로 `backend/swagger.yaml`을 보여준다 (`routes/docsRoutes.ts`, BE-03).
+- 구현에서 정한 응답 세부 (가정, `swagger.yaml`에도 반영):
+  - 본문이 비어 있는 `PATCH /api/todos/:id`는 400, field `body`다.
+  - `categoryId`와 `all`이 아닌 `filter`를 함께 지정한 목록 조회는 400, field `filter`다.
+  - '기본' 카테고리의 이름 변경·삭제는 400, field `name`이다.
+  - 로그인 제한(429)이 걸리면 올바른 비밀번호로 요청해도 1분간 거부한다.
+  - 이메일은 앞뒤 공백만 제거하고 대소문자는 그대로 쓴다 (7-erd 4장 5).
+
 ## 4. 데이터베이스 (DB)
 
 ### DB-01 스키마 파일 배치 및 적용
 
 - **선행 Task:** 없음 (PostgreSQL 17 인스턴스 필요)
-- **관련:** 7-erd, `docs/schema.sql`, 5번 문서 5.3, PRD 7.3
+- **관련:** 7-erd, `backend/db/schema.sql`, 5번 문서 5.3, PRD 7.3
 - **수행 작업:**
   - `docs/schema.sql`을 `backend/db/schema.sql`로 옮기고 스키마의 유일한 원본으로 삼는다 (5번 문서 5.3). `docs/`에는 남기지 않는다.
   - 로컬 PostgreSQL 17에 개발용 DB를 만들고 `schema.sql`을 수동 적용한다.
   - 적용 방법(명령 1줄)을 `backend/db/schema.sql` 상단 주석에 적는다.
 - **완료 조건:**
-  - [ ] `backend/db/schema.sql`만 존재하고 `docs/schema.sql`은 없다
-  - [ ] 빈 DB에 `schema.sql` 적용이 오류 없이 끝난다
-  - [ ] `users`, `categories`, `todos`, `refresh_tokens` 4개 테이블이 생성되어 있다
-  - [ ] 인덱스 `categories_user_id_default_key`, `todos_user_id_end_date_idx`, `refresh_tokens_user_id_idx`가 존재한다
+  - [x] `backend/db/schema.sql`만 존재하고 `docs/schema.sql`은 없다
+  - [x] 빈 DB에 `schema.sql` 적용이 오류 없이 끝난다
+  - [x] `users`, `categories`, `todos`, `refresh_tokens` 4개 테이블이 생성되어 있다
+  - [x] 인덱스 `categories_user_id_default_key`, `todos_user_id_end_date_idx`, `refresh_tokens_user_id_idx`가 존재한다
 
 ### DB-02 DB 제약 동작 확인
 
@@ -125,12 +143,12 @@ flowchart LR
 - **관련:** BR-02, BR-05, BR-08, BR-18, 5번 문서 4장 5
 - **수행 작업:** 서버를 거치지 않고 SQL로 잘못된 데이터를 넣어 DB 제약이 막는지 확인한다. 확인 후 데이터는 롤백한다.
 - **완료 조건:**
-  - [ ] 같은 `email` 두 번 INSERT 시 UNIQUE 위반으로 실패한다 (BR-02)
-  - [ ] 같은 사용자에 같은 이름 카테고리 INSERT 시 실패한다 (도메인 3.2)
-  - [ ] 같은 사용자에 `is_default = true` 카테고리 2개 INSERT 시 실패한다 (BR-05)
-  - [ ] `end_date < start_date` 할일 INSERT 시 CHECK 위반으로 실패한다 (BR-08)
-  - [ ] 할일이 있는 카테고리 DELETE 시 FK `RESTRICT`로 실패한다 (BR-18)
-  - [ ] 사용자 DELETE 시 해당 `refresh_tokens` 행이 함께 삭제된다 (`CASCADE`)
+  - [x] 같은 `email` 두 번 INSERT 시 UNIQUE 위반으로 실패한다 (BR-02)
+  - [x] 같은 사용자에 같은 이름 카테고리 INSERT 시 실패한다 (도메인 3.2)
+  - [x] 같은 사용자에 `is_default = true` 카테고리 2개 INSERT 시 실패한다 (BR-05)
+  - [x] `end_date < start_date` 할일 INSERT 시 CHECK 위반으로 실패한다 (BR-08)
+  - [x] 할일이 있는 카테고리 DELETE 시 FK `RESTRICT`로 실패한다 (BR-18)
+  - [x] 사용자 DELETE 시 해당 `refresh_tokens` 행이 함께 삭제된다 (`CASCADE`)
 
 ### DB-03 개발용 시드 데이터
 
@@ -140,10 +158,10 @@ flowchart LR
   - `backend/db/seed.sql`(가정)을 작성한다. 사용자 2명(본인, 다른 사용자), 각자 '기본' 카테고리, 본인의 '업무' 카테고리, 할일 A~F(도메인 5.2 그대로), 다른 사용자의 할일 1건.
   - 비밀번호는 알려진 값의 bcrypt 해시(cost 10)를 미리 계산해 넣는다. 평문은 파일 주석에만 적는다 (개발용).
 - **완료 조건:**
-  - [ ] 빈 스키마에 `seed.sql` 적용이 오류 없이 끝난다
-  - [ ] 본인 할일 6건(A~F)의 카테고리·시작일자·종료일자·완료 여부가 도메인 5.2 표와 일치한다
-  - [ ] 다른 사용자의 할일 1건이 존재한다 (AC-08-8 확인용)
-  - [ ] 시드 계정으로 BE-05 로그인이 성공한다 (BE-05 완료 후 확인)
+  - [x] 빈 스키마에 `seed.sql` 적용이 오류 없이 끝난다
+  - [x] 본인 할일 6건(A~F)의 카테고리·시작일자·종료일자·완료 여부가 도메인 5.2 표와 일치한다
+  - [x] 다른 사용자의 할일 1건이 존재한다 (AC-08-8 확인용)
+  - [x] 시드 계정으로 BE-05 로그인이 성공한다 (BE-05 완료 후 확인)
 
 ### DB-04 부하 테스트 사전 데이터
 
@@ -151,9 +169,9 @@ flowchart LR
 - **관련:** NFR-03, 5번 문서 4장 6
 - **수행 작업:** `loadtest/seed.sql`(가정)에 `generate_series`로 사용자 1,000명 × 할일 100건을 만든다. 모든 사용자는 같은 비밀번호 해시와 '기본' 카테고리 1개를 가진다. 날짜는 부하 테스트 실행 월 전후에 분산한다.
 - **완료 조건:**
-  - [ ] 적용 후 `users` 1,000행, `todos` 100,000행, 사용자당 기본 카테고리 1개다
-  - [ ] 적용 시간이 1분 이내다 (가정)
-  - [ ] 임의 사용자 1명의 목록 조회 쿼리 `EXPLAIN`이 `todos_user_id_end_date_idx`를 사용한다 (NFR-04)
+  - [x] 적용 후 `users` 1,000행, `todos` 100,000행, 사용자당 기본 카테고리 1개다
+  - [x] 적용 시간이 1분 이내다 (가정)
+  - [x] 임의 사용자 1명의 목록 조회 쿼리 `EXPLAIN`이 `todos_user_id_end_date_idx`를 사용한다 (NFR-04)
 
 ## 5. 백엔드 (BE)
 
@@ -163,15 +181,15 @@ flowchart LR
 - **관련:** PRD 7.1·7.2, 5번 문서 5.1·6.3
 - **수행 작업:**
   - `backend/`에 `package.json`, `tsconfig.json`을 만든다. 의존성: `express`, `pg`, `jsonwebtoken`, `bcrypt`, `cookie-parser`와 각 타입 패키지, `typescript`. 그 외 추가 금지 (5번 문서 1장 3).
-  - 스크립트: `dev` = `node --watch src/server.ts`, `start` = `node src/server.ts`, `typecheck` = `tsc --noEmit`. 빌드 단계는 없다 (PRD 7.2 백엔드 TS 실행). `tsconfig.json`은 `noEmit`, `allowImportingTsExtensions`, `erasableSyntaxOnly`, `verbatimModuleSyntax`를 켠다.
-  - `src/config.ts`: 환경 변수(`DATABASE_URL`, `PORT`, `NODE_ENV`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`) 읽기·필수 검증, PRD 튜닝 상수(bcrypt cost 10, 풀 20, 본문 100KB, 토큰 15분/7일).
+  - 스크립트: `dev` = `node --watch src/server.ts`, `start` = `node src/server.ts`, `typecheck` = `tsc --noEmit`, `test` = Node 내장 `node --test`(`--test-concurrency=1`, `--experimental-test-coverage`, `test/*.test.ts`). 빌드 단계는 없다 (PRD 7.2 백엔드 TS 실행). `tsconfig.json`은 `noEmit`, `allowImportingTsExtensions`, `erasableSyntaxOnly`, `verbatimModuleSyntax`를 켠다.
+  - `src/config.ts`: 환경 변수(`DATABASE_URL`, `PORT`, `NODE_ENV`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`) 읽기·필수 검증, 선택 환경 변수 `CORS_ORIGIN`(쉼표 구분, 비우면 CORS 헤더 없음), PRD 튜닝 상수(bcrypt cost 10, 풀 20, 본문 100KB, 토큰 15분/7일).
   - `.env.example`(값 없음)을 만들고 `.env`는 `.gitignore`에 넣는다.
 - **완료 조건:**
-  - [ ] `npm install` 후 `npm run typecheck`가 성공하고 `npm run dev`로 서버가 시작된다
-  - [ ] 의존성에 `tsx`, `ts-node` 등 TS 실행 도구가 없다
-  - [ ] 필수 환경 변수 하나라도 없으면 서버가 시작하지 않고 누락 이름을 출력한다
-  - [ ] `package.json`에 ORM·검증 라이브러리·라우터 외 프레임워크가 없다
-  - [ ] `.env`가 Git 추적 대상이 아니다
+  - [x] `npm install` 후 `npm run typecheck`가 성공하고 `npm run dev`로 서버가 시작된다
+  - [x] 의존성에 `tsx`, `ts-node` 등 TS 실행 도구가 없다
+  - [x] 필수 환경 변수 하나라도 없으면 서버가 시작하지 않고 누락 이름을 출력한다
+  - [x] `package.json`에 ORM·검증 라이브러리·라우터 외 프레임워크가 없다
+  - [x] `.env`가 Git 추적 대상이 아니다
 
 ### BE-02 공통 인프라 (DB 연결, 오류, 앱 조립, 헬스체크)
 
@@ -180,14 +198,14 @@ flowchart LR
 - **수행 작업:**
   - `src/db.ts`: pg `Pool`(최대 20), DATE(OID 1082) 문자열 파서, 트랜잭션 헬퍼 1개.
   - `src/errors.ts`: 400(항목별 사유 포함) / 401 / 404 오류 클래스.
-  - `src/app.ts`: JSON 본문 100KB 제한, `cookie-parser`, 라우터 마운트, 최종 오류 핸들러 1개. `src/server.ts`: listen.
+  - `src/app.ts`: `CORS_ORIGIN`에 있는 출처에만 CORS 헤더 설정(의존성 없이 직접), JSON 본문 100KB 제한, `cookie-parser`, 라우터 마운트, 최종 오류 핸들러 1개. `src/server.ts`: listen.
   - `routes/healthRoutes.ts`: `GET /api/health`가 DB에 `SELECT 1` 후 200.
 - **완료 조건:**
-  - [ ] `GET /api/health`가 200을 반환한다 (PRD 8장 Day 1 오전 완료 기준)
-  - [ ] DB의 `date` 컬럼 조회 결과가 JS `Date`가 아니라 `YYYY-MM-DD` 문자열이다
-  - [ ] 100KB 초과 본문 요청이 413으로 거부된다
-  - [ ] 처리되지 않은 예외가 500 JSON 응답이 되고 서버가 죽지 않는다
-  - [ ] `new Pool` 호출이 `db.ts` 한 곳에만 있다
+  - [x] `GET /api/health`가 200을 반환한다 (PRD 8장 Day 1 오전 완료 기준)
+  - [x] DB의 `date` 컬럼 조회 결과가 JS `Date`가 아니라 `YYYY-MM-DD` 문자열이다
+  - [x] 100KB 초과 본문 요청이 413으로 거부된다
+  - [x] 처리되지 않은 예외가 500 JSON 응답이 되고 서버가 죽지 않는다
+  - [x] `new Pool` 호출이 `db.ts` 한 곳에만 있다
 
 ### BE-03 Access Token 검증 미들웨어
 
@@ -195,10 +213,10 @@ flowchart LR
 - **관련:** BR-01, NFR-06, NFR-09, PRD 6.4, 5번 문서 5.2
 - **수행 작업:** `middleware/auth.ts`: `Authorization: Bearer` 추출, `HS256` 고정·`type = "access"` 확인, 성공 시 요청에 사용자 ID(`sub`) 설정, 실패 시 401. 인증 필요 라우터에 라우터 단위로 적용한다.
 - **완료 조건:**
-  - [ ] 헤더 없음·만료·위조·`type = "refresh"` 토큰 모두 401이다
-  - [ ] `alg: none` 또는 다른 알고리즘 토큰이 거부된다
-  - [ ] 유효한 토큰이면 핸들러에서 사용자 ID를 읽을 수 있다
-  - [ ] 인증 없이 열린 경로는 가입·로그인·재발급·로그아웃·헬스체크뿐이다
+  - [x] 헤더 없음·만료·위조·`type = "refresh"` 토큰 모두 401이다
+  - [x] `alg: none` 또는 다른 알고리즘 토큰이 거부된다
+  - [x] 유효한 토큰이면 핸들러에서 사용자 ID를 읽을 수 있다
+  - [x] 인증 없이 열린 경로는 가입·로그인·재발급·로그아웃·헬스체크뿐이다 (예외: 개발 환경 전용 API 문서 `/api-docs`)
 
 ### BE-04 회원가입 API
 
@@ -209,11 +227,11 @@ flowchart LR
   - `services/authService.ts`: 트랜잭션으로 사용자(bcrypt 해시) + '기본' 카테고리(`is_default = true`) 생성.
   - `POST /api/auth/signup`. 중복 이메일은 400 + 이메일 항목 사유.
 - **완료 조건:**
-  - [ ] 정상 가입 시 `users` 1행과 `is_default = true` 카테고리 1행이 생긴다
-  - [ ] 중복 이메일은 400이고 사유가 이메일 항목에 달린다 (BR-02, SC-01 2a)
-  - [ ] 제약 위반은 400 + 위반 항목별 사유이며 DB에 행이 생기지 않는다 (BR-11, SC-01 2b)
-  - [ ] 카테고리 생성이 실패하면 사용자도 생성되지 않는다 (트랜잭션)
-  - [ ] DB에 비밀번호 평문이 없다
+  - [x] 정상 가입 시 `users` 1행과 `is_default = true` 카테고리 1행이 생긴다
+  - [x] 중복 이메일은 400이고 사유가 이메일 항목에 달린다 (BR-02, SC-01 2a)
+  - [x] 제약 위반은 400 + 위반 항목별 사유이며 DB에 행이 생기지 않는다 (BR-11, SC-01 2b)
+  - [x] 카테고리 생성이 실패하면 사용자도 생성되지 않는다 (트랜잭션)
+  - [x] DB에 비밀번호 평문이 없다
 
 ### BE-05 로그인·재발급·로그아웃·내 정보 조회 API
 
@@ -225,12 +243,12 @@ flowchart LR
   - 로그아웃: 해당 `jti` 삭제, 쿠키 삭제.
   - `GET /api/users/me`: 이메일·이름 반환 (가정).
 - **완료 조건:**
-  - [ ] 로그인 실패는 이메일 없음·비밀번호 틀림 모두 같은 상태 코드·같은 문구다 (BR-14)
-  - [ ] 로그인 응답 본문에 Access, `Set-Cookie`에 Refresh가 있고 쿠키 속성이 PRD 6.4와 같다
-  - [ ] 재발급 후 이전 Refresh로 다시 재발급하면 401이고 그 사용자의 Refresh 행이 0개가 된다
-  - [ ] 로그아웃 후 같은 Refresh로 재발급하면 401이다
-  - [ ] `refresh_tokens`에 토큰 원문이 없다
-  - [ ] 로그에 비밀번호·토큰·`Authorization` 값이 출력되지 않는다
+  - [x] 로그인 실패는 이메일 없음·비밀번호 틀림 모두 같은 상태 코드·같은 문구다 (BR-14)
+  - [x] 로그인 응답 본문에 Access, `Set-Cookie`에 Refresh가 있고 쿠키 속성이 PRD 6.4와 같다
+  - [x] 재발급 후 이전 Refresh로 다시 재발급하면 401이고 그 사용자의 Refresh 행이 0개가 된다
+  - [x] 로그아웃 후 같은 Refresh로 재발급하면 401이다
+  - [x] `refresh_tokens`에 토큰 원문이 없다
+  - [x] 로그에 비밀번호·토큰·`Authorization` 값이 출력되지 않는다
 
 ### BE-06 카테고리 API
 
@@ -241,11 +259,11 @@ flowchart LR
   - `services/categoryService.ts`: 목록(본인만), 생성, 이름 변경, 삭제. 모든 쿼리에 `user_id = sub` 조건. '기본' 변경·삭제는 거부. 삭제는 트랜잭션으로 소속 할일 `category_id`를 본인 '기본'으로 `UPDATE` 후 `DELETE`.
   - `routes/categoryRoutes.ts`: 3장 경로.
 - **완료 조건:**
-  - [ ] 목록에 본인 카테고리만 있고 '기본'이 포함된다
-  - [ ] 소유자 내 중복 이름은 생성·변경 모두 400이다. 다른 사용자와 같은 이름은 허용된다 (AC-10-2, SC-10 2b)
-  - [ ] '기본' 이름 변경·삭제 요청이 400으로 거부되고 데이터가 바뀌지 않는다 (AC-10-4)
-  - [ ] '업무' 삭제 후 A, B의 카테고리가 '기본'이고 할일은 6건 그대로다 (AC-10-3)
-  - [ ] 다른 사용자의 카테고리 ID로 변경·삭제하면 404다 (BR-03)
+  - [x] 목록에 본인 카테고리만 있고 '기본'이 포함된다
+  - [x] 소유자 내 중복 이름은 생성·변경 모두 400이다. 다른 사용자와 같은 이름은 허용된다 (AC-10-2, SC-10 2b)
+  - [x] '기본' 이름 변경·삭제 요청이 400으로 거부되고 데이터가 바뀌지 않는다 (AC-10-4)
+  - [x] '업무' 삭제 후 A, B의 카테고리가 '기본'이고 할일은 6건 그대로다 (AC-10-3)
+  - [x] 다른 사용자의 카테고리 ID로 변경·삭제하면 404다 (BR-03)
 
 ### BE-07 할일 등록·수정·삭제 API
 
@@ -256,13 +274,13 @@ flowchart LR
   - `services/todoService.ts`: 등록(카테고리 없으면 본인 '기본', 지정 시 본인 카테고리인지 확인), 수정(부분 수정, 완료/완료 해제 포함, `updated_at = now()` 직접 설정), 삭제. 모든 쿼리에 `user_id = sub` 조건.
   - `PATCH`는 보낸 필드만 바꾼다 (FR-14 완료 토글이 같은 경로 사용).
 - **완료 조건:**
-  - [ ] 카테고리 미지정 등록 시 '기본'이 적용된다 (AC-05-2)
-  - [ ] 시작일자 = 종료일자는 저장되고, 종료일자 < 시작일자는 400이다 (AC-05-3, AC-05-4)
-  - [ ] 제목 공백만 있으면 400 + 제목 사유다 (AC-05-5)
-  - [ ] 다른 사용자의 카테고리 ID 지정 시 거부된다 (BR-13, SC-04 3f)
-  - [ ] 다른 사용자의 할일 ID 수정·삭제는 404이고 데이터가 바뀌지 않는다 (AC-06-4, AC-07-3)
-  - [ ] 수정 거부 시 저장된 값이 바뀌지 않는다 (AC-06-3)
-  - [ ] 수정 성공 시 `updated_at`이 갱신된다
+  - [x] 카테고리 미지정 등록 시 '기본'이 적용된다 (AC-05-2)
+  - [x] 시작일자 = 종료일자는 저장되고, 종료일자 < 시작일자는 400이다 (AC-05-3, AC-05-4)
+  - [x] 제목 공백만 있으면 400 + 제목 사유다 (AC-05-5)
+  - [x] 다른 사용자의 카테고리 ID 지정 시 거부된다 (BR-13, SC-04 3f)
+  - [x] 다른 사용자의 할일 ID 수정·삭제는 404이고 데이터가 바뀌지 않는다 (AC-06-4, AC-07-3)
+  - [x] 수정 거부 시 저장된 값이 바뀌지 않는다 (AC-06-3)
+  - [x] 수정 성공 시 `updated_at`이 갱신된다
 
 ### BE-08 할일 목록(필터)·월 조회 API
 
@@ -273,12 +291,12 @@ flowchart LR
   - 목록: `filter`(`all` / `not_started` / `in_progress` / `done` / `overdue`)와 `categoryId`(단일 선택, 가정: 둘 중 하나만) 를 허용 목록에서 SQL 조건으로 매핑. 정렬 종료일자 오름차순, 같으면 `created_at` 순.
   - 월 조회: `month`(`YYYY-MM`)로 `start_date <= 말일 AND end_date >= 1일` (BR-12).
 - **완료 조건:**
-  - [ ] 시드 데이터·`today=2026-10-01`로 AC-08-1~AC-08-6 결과가 일치한다
-  - [ ] `today=2026-10-02` '지연' 결과가 A, C다 (AC-08-7)
-  - [ ] 다른 사용자의 할일은 어떤 조건에서도 나오지 않는다 (AC-08-8)
-  - [ ] `month=2026-10`은 B, C, D, E, `month=2026-09`는 A, B, F다 (AC-09-1, AC-09-2)
-  - [ ] 허용 목록 밖 `filter`·잘못된 `today`·`month` 형식은 400이다
-  - [ ] 서비스 코드에 필터용 `Array.filter`, 오늘 계산용 `new Date()`가 없다
+  - [x] 시드 데이터·`today=2026-10-01`로 AC-08-1~AC-08-6 결과가 일치한다
+  - [x] `today=2026-10-02` '지연' 결과가 A, C다 (AC-08-7)
+  - [x] 다른 사용자의 할일은 어떤 조건에서도 나오지 않는다 (AC-08-8)
+  - [x] `month=2026-10`은 B, C, D, E, `month=2026-09`는 A, B, F다 (AC-09-1, AC-09-2)
+  - [x] 허용 목록 밖 `filter`·잘못된 `today`·`month` 형식은 400이다
+  - [x] 서비스 코드에 필터용 `Array.filter`, 오늘 계산용 `new Date()`가 없다
 
 ### BE-09 내 정보 수정·비밀번호 변경 API (P1)
 
@@ -286,11 +304,11 @@ flowchart LR
 - **관련:** FR-13, UC-03, BR-04, BR-15, BR-16, PRD 6.4
 - **수행 작업:** `PATCH /api/users/me`(이름만, 이메일 필드는 무시), `PUT /api/users/me/password`(현재 비밀번호 확인 → 새 해시 저장 → 해당 사용자 Refresh 전부 삭제 → 현재 기기에 새 Access·Refresh 발급).
 - **완료 조건:**
-  - [ ] 이름 제약 위반은 400이다 (SC-12 2a)
-  - [ ] 이메일은 어떤 요청으로도 바뀌지 않는다 (BR-16)
-  - [ ] 현재 비밀번호 불일치는 거부되고 해시가 바뀌지 않는다 (BR-15)
-  - [ ] 변경 후 다른 기기의 기존 Refresh로 재발급하면 401이다 (SC-12 4)
-  - [ ] 변경한 기기는 응답으로 받은 새 토큰으로 계속 요청할 수 있다
+  - [x] 이름 제약 위반은 400이다 (SC-12 2a)
+  - [x] 이메일은 어떤 요청으로도 바뀌지 않는다 (BR-16)
+  - [x] 현재 비밀번호 불일치는 거부되고 해시가 바뀌지 않는다 (BR-15)
+  - [x] 변경 후 다른 기기의 기존 Refresh로 재발급하면 401이다 (SC-12 4)
+  - [x] 변경한 기기는 응답으로 받은 새 토큰으로 계속 요청할 수 있다. 단, 이후 다른 기기가 옛 Refresh로 재발급하면 재사용 감지(PRD 6.4)로 변경한 기기의 Refresh도 삭제되어 Access 만료 후 재로그인이 필요하다 (단일 기기 사용 전제로 허용)
 
 ### BE-10 로그인 실패 횟수 제한 (P1)
 
@@ -298,19 +316,19 @@ flowchart LR
 - **관련:** NFR-11, SC-02 1b
 - **수행 작업:** `middleware/loginLimit.ts`: IP별 메모리 카운터, 분당 실패 10회 초과 시 일시 거부. 로그인 경로에만 적용.
 - **완료 조건:**
-  - [ ] 같은 IP에서 1분 안에 11번째 실패 요청이 429로 거부된다
-  - [ ] 1분이 지나면 다시 로그인을 시도할 수 있다
-  - [ ] 다른 IP는 영향을 받지 않는다
+  - [x] 같은 IP에서 1분 안에 11번째 실패 요청이 429로 거부된다
+  - [x] 1분이 지나면 다시 로그인을 시도할 수 있다
+  - [x] 다른 IP는 영향을 받지 않는다
 
 ### BE-11 API 수동 확인 요청 모음
 
 - **선행 Task:** BE-06, BE-08, DB-03
 - **관련:** PRD 8장 Day 1 오후 완료 기준, 5번 문서 4장 2
-- **수행 작업:** `backend/requests/`에 AC 항목별 요청과 기대 응답을 정리한다. 형식은 편집기에서 바로 실행 가능한 `.http` 파일로 한다 (가정).
+- **수행 작업:** `backend/requests/`에 AC 항목별 요청과 기대 응답을 정리한다. 형식은 편집기에서 바로 실행 가능한 `.http` 파일로 한다 (가정): `requests/auth.http`, `requests/ac.http`. 같은 판정은 `backend/test/*.test.ts`(`npm test`)로도 자동 확인한다.
 - **완료 조건:**
-  - [ ] AC-05 ~ AC-10의 서버 측 판정(저장 거부, 404, 필터 결과, 월 포함 결과, 카테고리 변경·삭제)마다 요청이 1개 이상 있다
-  - [ ] 시드 데이터 기준으로 모든 요청의 실제 응답이 기대 응답과 같다
-  - [ ] 소유권 차단(AC-06-4, AC-07-3, AC-08-8, BR-13) 요청이 포함되어 있다
+  - [x] AC-05 ~ AC-10의 서버 측 판정(저장 거부, 404, 필터 결과, 월 포함 결과, 카테고리 변경·삭제)마다 요청이 1개 이상 있다
+  - [x] 시드 데이터 기준으로 모든 요청의 실제 응답이 기대 응답과 같다
+  - [x] 소유권 차단(AC-06-4, AC-07-3, AC-08-8, BR-13) 요청이 포함되어 있다
 
 ## 6. 프론트엔드 (FE)
 
@@ -485,7 +503,7 @@ flowchart LR
 - **관련:** PRD 7.2, 5번 문서 5.3
 - **수행 작업:** `frontend` 빌드 결과(`frontend/dist`)를 Express가 정적 서빙하도록 `app.ts`에 추가하고 단일 서버에 배포한다. 서버는 `npm start`(`node src/server.ts`)로 실행한다. 운영 환경 변수(`NODE_ENV=production`, 서로 다른 JWT 키 2개)를 설정하고 스키마를 적용한다.
 - **완료 조건:**
-  - [ ] 배포 URL 하나로 화면과 `/api`가 모두 동작한다 (CORS 설정 없음)
+  - [ ] 배포 URL 하나로 화면과 `/api`가 모두 동작한다 (운영은 `CORS_ORIGIN` 비움)
   - [ ] 운영 Refresh 쿠키에 `Secure`가 붙는다
   - [ ] `JWT_ACCESS_SECRET`과 `JWT_REFRESH_SECRET`이 서로 다르고 저장소에 없다
   - [ ] 배포 URL에서 SC-01(가입 → 첫 할일 등록)이 끝까지 동작한다
@@ -496,9 +514,9 @@ flowchart LR
 
 | 항목                      | 결정                                                                                                           | 이유                                                                | 반영 문서               | 영향 Task       |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------- | --------------- |
-| API 경로                  | 3장 표로 확정. 요청·응답·상태 코드는 `swagger.json`이 원본                                                     | BE·FE가 같은 계약으로 병행 작업                                     | 8번 3장, `swagger.json` | BE-04~10, FE-02 |
+| API 경로                  | 3장 표로 확정. 요청·응답·상태 코드는 `backend/swagger.yaml`이 원본                                                     | BE·FE가 같은 계약으로 병행 작업                                     | 8번 3장, `swagger.yaml` | BE-04~10, FE-02 |
 | 백엔드 TS 실행·빌드 방식  | 빌드 없이 Node.js 내장 타입 제거로 실행(`node src/server.ts`, 개발 `node --watch`). 타입 검사는 `tsc --noEmit` | 추가 의존성 0개. 개발 환경 Node.js v26에서 기본 지원                | PRD 7.2, 5번 6.3        | BE-01, IT-03    |
 | 월 조회 쿼리 담당 훅      | `useCalendarMonth`가 월 상태·이동·조회·그리드를 모두 담당                                                      | 월 값과 조회 키가 한 곳에 있어 훅 하나로 충분                       | PRD 7.4                 | FE-08           |
 | `updated_at` 갱신 방식    | 트리거 없이 할일 `UPDATE` 쿼리에서 `updated_at = now()` 직접 설정                                              | 할일 수정 경로가 `PATCH /api/todos/:id` 하나뿐                      | 7-erd 2.3, `schema.sql` | BE-07           |
 | KPI-04 로그인 이력 테이블 | 만들지 않는다. KPI-04는 MVP에서 측정하지 않는다                                                                | 2일 일정에서 기능과 무관한 테이블·쓰기 추가를 피함. P0·P1 영향 없음 | PRD 2.2, 7-erd 4장 1    | -               |
-| 자동화 테스트 도구        | 도입하지 않는다. 서버는 BE-11 요청 모음, 화면은 IT-01 AC 체크리스트로 확인                                     | PRD 지정 없음, KPI-01이 수동 체크리스트 기준                        | 5번 4장 10              | BE-11, IT-01    |
+| 자동화 테스트 도구        | 백엔드는 Node 내장 `node:test`(`npm test`, `backend/test/*.test.ts`, 의존성 추가 없음). BE-11 요청 모음도 유지. 화면은 IT-01 AC 체크리스트로 확인 | 내장 기능이라 의존성 0개 추가. 화면은 KPI-01이 수동 체크리스트 기준 | 5번 4장 10, PRD 7.2      | BE-11, IT-01    |

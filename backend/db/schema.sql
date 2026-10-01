@@ -1,5 +1,6 @@
 -- team-caltalk DDL (PostgreSQL 17)
 -- 근거: docs/7-erd.md v0.2
+-- 적용: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f backend/db/schema.sql   (빈 DB 기준, PGCLIENTENCODING=UTF8)
 
 CREATE TABLE users (
     id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

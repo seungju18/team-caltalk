@@ -27,6 +27,10 @@
     "webpixels": {
       "command": "npx",
       "args": ["-y", "@webpixels/mcp"]
+    },
+    "postgresql-mcp": {
+      "command": "npx",
+      "args": ["-y", "@henkey/postgres-mcp-server"]
     }
   }
 }

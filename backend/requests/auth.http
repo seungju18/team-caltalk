@@ -1,0 +1,86 @@
+# 인증·사용자 API 수동 확인 (BE-11)
+# 시드 적용 후 실행: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f backend/db/seed.sql
+# refresh·logout은 로그인 응답의 refreshToken 쿠키를 편집기가 자동으로 보내는 것을 전제로 한다.
+@baseUrl = http://localhost:3000
+
+###
+# 가입: 새 계정 (재실행 시 중복 이메일로 400)
+# 기대: 201, { id, email: "new@example.com", name: "신규" }
+POST {{baseUrl}}/api/auth/signup
+Content-Type: application/json
+
+{ "email": "new@example.com", "password": "test1234", "name": "신규" }
+
+###
+# 가입: 중복 이메일
+# 기대: 400, errors[0].field = "email"
+POST {{baseUrl}}/api/auth/signup
+Content-Type: application/json
+
+{ "email": "me@example.com", "password": "test1234", "name": "중복" }
+
+###
+# 로그인: 본인
+# 기대: 200, { accessToken }, Set-Cookie refreshToken (Path=/api/auth; HttpOnly; SameSite=Strict)
+# @name loginMe
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "me@example.com", "password": "test1234" }
+
+###
+# 로그인: 다른 사용자
+# 기대: 200, { accessToken }
+# @name loginOther
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "other@example.com", "password": "test1234" }
+
+###
+# 로그인: 비밀번호 틀림 (BR-14)
+# 기대: 401, message = "식별자 또는 비밀번호가 올바르지 않습니다"
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "me@example.com", "password": "wrong1234" }
+
+###
+# 로그인: 없는 이메일 (BR-14)
+# 기대: 401, 비밀번호 틀림과 같은 message
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "nobody@example.com", "password": "test1234" }
+
+###
+# 내 정보: 본인 토큰
+# 기대: 200, { id: 1, email: "me@example.com", name: "본인" }
+GET {{baseUrl}}/api/users/me
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# 내 정보: 다른 사용자 토큰
+# 기대: 200, { id: 2, email: "other@example.com", name: "다른사용자" }
+GET {{baseUrl}}/api/users/me
+Authorization: Bearer {{loginOther.response.body.accessToken}}
+
+###
+# 내 정보: 토큰 없음
+# 기대: 401
+GET {{baseUrl}}/api/users/me
+
+###
+# 토큰 재발급: 마지막 로그인 쿠키(other) 사용
+# 기대: 200, { accessToken }, 새 refreshToken 쿠키
+POST {{baseUrl}}/api/auth/refresh
+
+###
+# 로그아웃
+# 기대: 204, refreshToken 쿠키 삭제
+POST {{baseUrl}}/api/auth/logout
+
+###
+# 로그아웃 후 재발급
+# 기대: 401
+POST {{baseUrl}}/api/auth/refresh

@@ -1,0 +1,306 @@
+# AC-05 ~ AC-10 서버 측 판정 수동 확인 (BE-11)
+# 주의: 앞 요청의 상태 변경이 뒤 기대값에 영향을 준다.
+#       시드 재적용 후 위에서부터 순서대로 실행한다.
+#       psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f backend/db/seed.sql
+# 시드: 본인(id 1) 카테고리 기본(id 1)·업무(id 3), 할일 A~F(id 1~6) / 다른 사용자 할일 id 7, 기본 id 2
+# 목록 정렬: end_date, created_at, id. 오늘은 today=2026-10-01 (AC-08-7만 2026-10-02).
+@baseUrl = http://localhost:3000
+@today = 2026-10-01
+
+###
+# 사전: 본인 로그인
+# 기대: 200, { accessToken }
+# @name loginMe
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "me@example.com", "password": "test1234" }
+
+# ───────── 조회 AC (시드 기준) ─────────
+
+###
+# AC-08-1: 전체 목록
+# 기대: 200, 6건 F, A, C, B, D, E (status: done, overdue, in_progress, in_progress, not_started, done)
+GET {{baseUrl}}/api/todos?filter=all&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-08-2: 지연 필터
+# 기대: 200, A
+GET {{baseUrl}}/api/todos?filter=overdue&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-08-3: 진행 중 필터
+# 기대: 200, C, B
+GET {{baseUrl}}/api/todos?filter=in_progress&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-08-4: 시작 전 필터
+# 기대: 200, D
+GET {{baseUrl}}/api/todos?filter=not_started&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-08-5: 완료 필터
+# 기대: 200, F, E
+GET {{baseUrl}}/api/todos?filter=done&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-08-6: 카테고리 '업무'(id 3) 필터
+# 기대: 200, A, B (categoryName = "업무")
+GET {{baseUrl}}/api/todos?categoryId=3&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-08-7: 지연 필터, 오늘 = 2026-10-02
+# 기대: 200, A, C (C는 종료일자 다음 날)
+GET {{baseUrl}}/api/todos?filter=overdue&today=2026-10-02
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-08-8: 다른 사용자 할일(id 7) 제외 (BR-03)
+# 기대: 200, A~F 6건만, id 7 '다른 사용자 할일' 없음
+GET {{baseUrl}}/api/todos?filter=all&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-09-1: 2026-10월 캘린더 (BR-12)
+# 기대: 200, C, B, D, E
+GET {{baseUrl}}/api/todos/calendar?month=2026-10&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-09-2: 2026-09월 캘린더 (BR-12)
+# 기대: 200, F, A, B (B는 9월·10월 모두 포함)
+GET {{baseUrl}}/api/todos/calendar?month=2026-09&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+# ───────── 변경 AC ─────────
+
+###
+# AC-05-2: 카테고리 미선택 등록 (BR-06)
+# 기대: 201, title "보고서", categoryId 1, categoryName "기본", 2026-10-01 ~ 2026-10-03
+# @name createReport
+POST {{baseUrl}}/api/todos
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+Content-Type: application/json
+
+{ "title": "보고서", "startDate": "2026-10-01", "endDate": "2026-10-03" }
+
+###
+# AC-05-2: 등록한 '보고서'의 상태 확인
+# 기대: 200, C, B, 보고서 (보고서 status = in_progress)
+GET {{baseUrl}}/api/todos?filter=in_progress&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-05-3: 하루짜리 할일 등록
+# 기대: 201, title "하루 할일", startDate = endDate = 2026-10-01
+# @name createOneDay
+POST {{baseUrl}}/api/todos
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+Content-Type: application/json
+
+{ "title": "하루 할일", "startDate": "2026-10-01", "endDate": "2026-10-01" }
+
+###
+# AC-05-4: 종료일자 < 시작일자 (BR-08)
+# 기대: 400, errors[0] = { field: "endDate", reason: "종료일자는 시작일자보다 빠를 수 없습니다" }
+POST {{baseUrl}}/api/todos
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+Content-Type: application/json
+
+{ "title": "역순", "startDate": "2026-10-02", "endDate": "2026-10-01" }
+
+###
+# AC-05-5: 제목 공백만 (BR-11)
+# 기대: 400, errors[0].field = "title"
+POST {{baseUrl}}/api/todos
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+Content-Type: application/json
+
+{ "title": "   ", "startDate": "2026-10-01", "endDate": "2026-10-01" }
+
+###
+# BR-13: 다른 사용자 카테고리(id 2)로 등록
+# 기대: 400, errors[0].field = "categoryId"
+POST {{baseUrl}}/api/todos
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+Content-Type: application/json
+
+{ "title": "남의 카테고리", "categoryId": 2, "startDate": "2026-10-01", "endDate": "2026-10-01" }
+
+###
+# AC-06-1 준비: 미완료 할일 2026-09-27 ~ 2026-09-29 등록
+# 기대: 201, isCompleted false
+# @name createOverdue
+POST {{baseUrl}}/api/todos
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+Content-Type: application/json
+
+{ "title": "지연 할일", "startDate": "2026-09-27", "endDate": "2026-09-29" }
+
+###
+# AC-06-1 준비: 지연 상태 확인
+# 기대: 200, A, 지연 할일
+GET {{baseUrl}}/api/todos?filter=overdue&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-06-1: 지연 할일을 완료 처리
+# 기대: 200, isCompleted true
+PATCH {{baseUrl}}/api/todos/{{createOverdue.response.body.id}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+Content-Type: application/json
+
+{ "isCompleted": true }
+
+###
+# AC-06-1: 지연 목록에서 빠짐
+# 기대: 200, A
+GET {{baseUrl}}/api/todos?filter=overdue&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-06-1: 완료 목록에 포함
+# 기대: 200, F, 지연 할일, E
+GET {{baseUrl}}/api/todos?filter=done&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-06-2: E(id 5) 완료 해제
+# 기대: 200, isCompleted false
+PATCH {{baseUrl}}/api/todos/5
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+Content-Type: application/json
+
+{ "isCompleted": false }
+
+###
+# AC-06-2: 시작 전 목록 확인
+# 기대: 200, D, E (E status = not_started)
+GET {{baseUrl}}/api/todos?filter=not_started&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-06-3: '보고서'(2026-10-01 ~ 10-03) 종료일자를 2026-09-30으로 (BR-08)
+# 기대: 400, errors[0].field = "endDate"
+PATCH {{baseUrl}}/api/todos/{{createReport.response.body.id}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+Content-Type: application/json
+
+{ "endDate": "2026-09-30" }
+
+###
+# AC-06-3: 저장된 값 불변 확인
+# 기대: 200, C, 하루 할일, B, 보고서 (보고서 endDate 여전히 2026-10-03)
+GET {{baseUrl}}/api/todos?filter=in_progress&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-06-4: 다른 사용자 할일(id 7) 수정 (BR-03)
+# 기대: 404
+PATCH {{baseUrl}}/api/todos/7
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+Content-Type: application/json
+
+{ "title": "탈취" }
+
+###
+# AC-07-1: '하루 할일' 삭제
+# 기대: 204
+DELETE {{baseUrl}}/api/todos/{{createOneDay.response.body.id}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-07-1: 목록에서 사라짐
+# 기대: 200, 8건 F, A, 지연 할일, C, B, 보고서, D, E ('하루 할일' 없음)
+GET {{baseUrl}}/api/todos?filter=all&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-07-1: 캘린더에서도 사라짐
+# 기대: 200, C, B, 보고서, D, E ('하루 할일' 없음)
+GET {{baseUrl}}/api/todos/calendar?month=2026-10&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-07-3: 다른 사용자 할일(id 7) 삭제 (BR-03)
+# 기대: 404
+DELETE {{baseUrl}}/api/todos/7
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-10-1: '업무'(id 3) → '회사'
+# 기대: 200, { id: 3, name: "회사", isDefault: false }
+PATCH {{baseUrl}}/api/categories/3
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+Content-Type: application/json
+
+{ "name": "회사" }
+
+###
+# AC-10-1: A, B의 카테고리 확인
+# 기대: 200, A, B (categoryName = "회사")
+GET {{baseUrl}}/api/todos?categoryId=3&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-10-2 준비: '개인' 카테고리 생성
+# 기대: 201, { name: "개인", isDefault: false }
+POST {{baseUrl}}/api/categories
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+Content-Type: application/json
+
+{ "name": "개인" }
+
+###
+# AC-10-2: 업무(id 3, 현재 '회사') → '개인' (중복)
+# 기대: 400, errors[0].field = "name"
+PATCH {{baseUrl}}/api/categories/3
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+Content-Type: application/json
+
+{ "name": "개인" }
+
+###
+# AC-10-4: '기본'(id 1) 이름 변경 (BR-17)
+# 기대: 400, errors[0] = { field: "name", reason: "'기본' 카테고리는 변경할 수 없습니다" }
+PATCH {{baseUrl}}/api/categories/1
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+Content-Type: application/json
+
+{ "name": "기타" }
+
+###
+# AC-10-4: '기본'(id 1) 삭제 (BR-17)
+# 기대: 400
+DELETE {{baseUrl}}/api/categories/1
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-10-4: '기본' 변화 없음
+# 기대: 200, [기본(id 1, isDefault true), 회사(id 3), 개인]
+GET {{baseUrl}}/api/categories
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-10-3: 업무(id 3, 현재 '회사') 삭제 (BR-18)
+# 기대: 204
+DELETE {{baseUrl}}/api/categories/3
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-10-3: 소속 할일이 '기본'으로 이동, 건수 유지
+# 기대: 200, 8건 그대로 (F, A, 지연 할일, C, B, 보고서, D, E), A·B categoryId 1 / categoryName "기본"
+GET {{baseUrl}}/api/todos?filter=all&today={{today}}
+Authorization: Bearer {{loginMe.response.body.accessToken}}
+
+###
+# AC-10-3: 카테고리 목록
+# 기대: 200, [기본(id 1), 개인] (id 3 없음)
+GET {{baseUrl}}/api/categories
+Authorization: Bearer {{loginMe.response.body.accessToken}}
