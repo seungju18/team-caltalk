@@ -64,3 +64,6 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   res.status(500).json({ message: '서버 오류가 발생했습니다' })
 }
 app.use(errorHandler)
+
+// Vercel은 이 파일의 default export를 서버 함수로 사용한다
+export default app
