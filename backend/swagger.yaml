@@ -99,6 +99,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/auth/google:
+    post:
+      tags:
+        - auth
+      operationId: googleLogin
+      summary: Google 로그인
+      description: Google Identity Services가 준 ID 토큰(credential)을 `GOOGLE_CLIENT_ID`로 검증한다. 이미 가입된 계정만 로그인한다(방식 B). `google_sub`가 같은 계정이 있으면 로그인하고, 없으면 같은 이메일(대소문자 무시) 계정에 `google_sub`를 연결한 뒤 로그인한다. 성공 응답은 로그인과 같다. `GOOGLE_CLIENT_ID`가 비어 있으면 항상 401. 인증 불필요.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoogleLoginRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/TokenIssued"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: 토큰 검증 실패, email_verified가 true가 아님, 또는 같은 이메일 계정에 다른 Google 계정이 연결됨
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                message: Google 인증에 실패했습니다
+        "404":
+          description: Google 이메일로 가입된 계정이 없음
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                message: 가입된 계정이 없습니다. 먼저 회원가입하세요
   /api/auth/refresh:
     post:
       tags:
@@ -113,6 +148,14 @@ paths:
           $ref: "#/components/responses/TokenIssued"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: 운영 환경에서 `Origin`이 `CORS_ORIGIN`에 없음 (CSRF 방지, PRD 6.4)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                message: 허용되지 않은 출처입니다
   /api/auth/logout:
     post:
       tags:
@@ -127,9 +170,17 @@ paths:
           description: 로그아웃 완료 (상태 코드 가정)
           headers:
             Set-Cookie:
-              description: "Refresh 쿠키 삭제. 예: `refreshToken=; Path=/api/auth; Max-Age=0; HttpOnly; SameSite=Strict`"
+              description: "Refresh 쿠키 삭제. 예: `refreshToken=; Path=/api/auth; Max-Age=0; HttpOnly; SameSite=Strict` (운영은 `Secure; SameSite=None`)"
               schema:
                 type: string
+        "403":
+          description: 운영 환경에서 `Origin`이 `CORS_ORIGIN`에 없음 (CSRF 방지, PRD 6.4)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                message: 허용되지 않은 출처입니다
   /api/users/me:
     get:
       tags:
@@ -420,7 +471,7 @@ components:
       type: apiKey
       in: cookie
       name: refreshToken
-      description: 'Refresh Token 쿠키. 쿠키 이름 `refreshToken`은 가정. JWT HS256, payload `sub`, `jti`, `type: "refresh"`, 만료 7일. `HttpOnly; SameSite=Strict; Path=/api/auth` (운영 `Secure`). `/api/auth/refresh`, `/api/auth/logout`에만 전송된다 (PRD 6.4)'
+      description: 'Refresh Token 쿠키. 쿠키 이름 `refreshToken`은 가정. JWT HS256, payload `sub`, `jti`, `type: "refresh"`, 만료 7일. `HttpOnly; SameSite=Strict; Path=/api/auth` (운영 `Secure; SameSite=None`). `/api/auth/refresh`, `/api/auth/logout`에만 전송된다 (PRD 6.4)'
   parameters:
     Id:
       name: id
@@ -441,7 +492,7 @@ components:
       example: "2026-10-01"
   headers:
     SetRefreshCookie:
-      description: "Refresh Token 발급. 예: `refreshToken=<JWT>; HttpOnly; SameSite=Strict; Path=/api/auth` (운영 `Secure`). 쿠키 이름은 가정"
+      description: "Refresh Token 발급. 예: `refreshToken=<JWT>; HttpOnly; SameSite=Strict; Path=/api/auth` (운영 `Secure; SameSite=None`). 쿠키 이름은 가정"
       schema:
         type: string
   responses:
@@ -557,6 +608,15 @@ components:
           type: string
         password:
           type: string
+    GoogleLoginRequest:
+      type: object
+      required:
+        - credential
+      properties:
+        credential:
+          type: string
+          minLength: 1
+          description: Google Identity Services가 준 ID 토큰
     UserUpdate:
       type: object
       required:

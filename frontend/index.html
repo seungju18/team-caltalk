@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TeamCalTalk</title>
+    <!-- 첫 화면이 그려지기 전에 저장된 테마·언어를 적용해 라이트→다크 깜빡임을 막는다. 기본값은 라이트 -->
+    <script>
+      try {
+        if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark')
+        if (localStorage.getItem('lang') === 'en') document.documentElement.lang = 'en'
+      } catch {}
+    </script>
+    <!-- Google 로그인 버튼(GIS). VITE_GOOGLE_CLIENT_ID 가 비면 쓰지 않는다 -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body class="bg-bg text-fg font-sans">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

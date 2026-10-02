@@ -54,6 +54,14 @@ Content-Type: application/json
 { "email": "nobody@example.com", "password": "test1234" }
 
 ###
+# Google 로그인: 임의 credential (실제 ID 토큰은 프론트 Google 버튼으로 받는다)
+# 기대: 401, message = "Google 인증에 실패했습니다"
+POST {{baseUrl}}/api/auth/google
+Content-Type: application/json
+
+{ "credential": "x" }
+
+###
 # 내 정보: 본인 토큰
 # 기대: 200, { id: 1, email: "me@example.com", name: "본인" }
 GET {{baseUrl}}/api/users/me

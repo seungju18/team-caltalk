@@ -7,6 +7,7 @@ CREATE TABLE users (
     email         varchar(254) NOT NULL UNIQUE,  -- BR-02, BR-16
     password_hash varchar(60)  NOT NULL,         -- NFR-07 bcrypt
     name          varchar(30)  NOT NULL,
+    google_sub    varchar(255) UNIQUE,           -- Google 계정 고유 ID(sub). 연결 전 NULL
     created_at    timestamptz  NOT NULL DEFAULT now()
 );
 

@@ -9,12 +9,13 @@
     "dev": "node --watch src/server.ts",
     "start": "node src/server.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --test-concurrency=1 --experimental-test-coverage --test-coverage-exclude=\"test/**\" \"test/*.test.ts\""
+    "test": "node --env-file=.env.test --test --test-concurrency=1 --experimental-test-coverage --test-coverage-exclude=\"test/**\" \"test/*.test.ts\""
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
+    "google-auth-library": "^11.1.0",
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0"
   },

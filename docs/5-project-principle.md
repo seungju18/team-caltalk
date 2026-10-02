@@ -17,6 +17,12 @@
 | 0.9  | seungju18 | 5.2 인증 전 경로에 개발 전용 API 문서(`/api-docs`) 예외 추가                                                                                                                                           | 2026-10-01       |
 | 1.0  | seungju18 | 선택 환경 변수 `CORS_ORIGIN`으로 CORS 허용 출처 설정 추가 (5.1, 5.3)                                                                                                                                   | 2026-10-01       |
 | 1.1  | seungju18 | 백엔드 자동화 테스트(`node:test`) 반영(4장 10), 6.1 docs 범위 1~8번, 6.3 디렉토리 구조를 실제 파일에 맞춤, 기준 PRD v0.11, 시나리오 v0.4, 와이어프레임 v0.3                                           | 2026-10-01       |
+| 1.2  | seungju18 | 원칙 9의 범위 외 예시에서 다크 모드 제거 (PRD v0.12) | 2026-10-01       |
+| 1.3  | seungju18 | 원칙 9의 범위 외 예시에서 i18n 제거 (PRD v0.13) | 2026-10-01       |
+| 1.4  | seungju18 | 5.3 배포를 프론트·백엔드 분리로 변경, `app.ts` 정적 서빙 제거 (PRD v0.15) | 2026-10-01       |
+| 1.5  | seungju18 | 5.3 개발 환경: vite proxy 제거, CORS 직접 호출 (PRD v0.16) | 2026-10-01       |
+| 1.6  | seungju18 | 4장 10: 테스트 전용 DB(`.env.test`) 분리, 개발 DB 초기화 방지 | 2026-10-01       |
+| 1.7  | seungju18 | 구현 반영: 4장 10 프론트 자동화 테스트, 5.1 `GOOGLE_CLIENT_ID`, 6.1 docs 1~9번, 6.2·6.3 디렉토리 구조를 실제 파일에 맞춤, 7장 `useApiClient` 항목 해소 (PRD v0.17) | 2026-10-02       |
 
 > 기준 문서: `CLAUDE.md`, `docs/1-domain-definition.md` v0.7 (이하 "도메인 정의서"), `docs/2-PRD.md` v0.11 (이하 "PRD"), `docs/3-user-scenario.md` v0.4 (이하 "시나리오"), `docs/4-wireframes.md` v0.3 (이하 "와이어프레임"). 기술 스택·프론트엔드 코드 규칙·인증 토큰·NFR·일정은 PRD, 규칙(BR)·수용 기준(AC)·미결정(OI)은 도메인 정의서를 원본으로 하고 이 문서에서는 ID로만 참조한다. `(가정)` 표시는 위 문서에 근거가 없어 이 문서에서 정한 내용이다.
 
@@ -35,7 +41,7 @@
 6. **P0가 먼저다.** 일정이 밀리면 PRD 8장의 절단 순서를 따르고 P0는 자르지 않는다.
 7. **요청받은 범위만 바꾼다.** 관련 없는 코드는 고치지 않고 언급만 한다 (CLAUDE.md 외과적 변경). 문서를 고치면 그 문서의 "문서 변경 이력"에 한 줄 추가한다.
 8. **TypeScript로 통일한다.** 프론트·백 모두 TS(PRD 7.1)이며 `any`는 쓰지 않는다 (가정).
-9. **범위 외 기능의 자리를 미리 만들지 않는다.** 도메인 정의서 6.1, PRD 4.2 항목(라우터, i18n, 다크 모드, 회원 탈퇴 등)을 위한 디렉토리·훅·설정은 두지 않는다.
+9. **범위 외 기능의 자리를 미리 만들지 않는다.** 도메인 정의서 6.1, PRD 4.2 항목(라우터, 회원 탈퇴 등)을 위한 디렉토리·훅·설정은 두지 않는다.
 
 ## 2. 의존성 / 레이어 원칙
 
@@ -139,14 +145,14 @@ PRD 7.4를 그대로 따른다. 여기서는 위치와 검증 방법만 정한�
 7. **화면 확인은 375px / 768px / 1280px 세 폭으로 한다** (PRD 8장 Day 2 오후, NFR-12·13). 지원 브라우저는 NFR-14를 따른다.
 8. **접근성 테스트는 하지 않는다** (NFR-15 범위 외).
 9. **타입 오류 0건을 유지한다.** 프론트·백 모두 `tsc --noEmit`이 통과해야 한다 (가정).
-10. **백엔드 자동화 테스트는 Node 내장 `node:test`로 하고 테스트 프레임워크 의존성은 추가하지 않는다.** `backend/test/*.test.ts`를 `npm test`(`--experimental-test-coverage`, `--test-concurrency=1`)로 실행하며, 각 테스트는 `db/seed.sql`로 개발 DB를 초기화한다. `backend/requests/` 요청 모음은 수동 확인용으로 유지하고, 화면은 AC 체크리스트로 확인한다 (8번 문서 8장, BE-11, IT-01).
+10. **자동화 테스트는 Node 내장 `node:test`로 하고 테스트 프레임워크 의존성은 추가하지 않는다.** `backend/test/*.test.ts`를 `npm test`(`--experimental-test-coverage`, `--test-concurrency=1`)로 실행하며, 각 테스트는 `db/seed.sql`로 테스트 DB를 초기화한다. `backend/requests/` 요청 모음은 수동 확인용으로 유지하고, 화면은 AC 체크리스트로 확인한다 (8번 문서 8장, BE-11, IT-01). 테스트는 개발 DB와 분리된 테스트 전용 DB(`backend/.env.test`의 `DATABASE_URL`, 이름이 `-test`로 끝남)를 쓰고, `resetDb()`는 테스트 DB가 아니면 실행을 거부한다. 프론트는 React·DOM 없이 돌릴 수 있는 `lib/`·`stores/`·`api/`·`locales/`만 `frontend/test/*.test.ts`로 확인한다(`npm test`, 브라우저 API는 `test/helpers.ts`의 스텁, axios는 adapter 교체). 컴포넌트·훅은 자동화 테스트 대상이 아니다.
 
 ## 5. 설정 / 보안 / 운영 원칙
 
 ### 5.1 설정
 
 - 비밀 값과 환경별 값은 환경 변수로만 주입하고 코드·저장소에 넣지 않는다. 서명 키는 `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` 두 개이며 서로 다른 값이다 (PRD 6.4).
-- 그 외 환경 변수는 `DATABASE_URL`, `PORT`, `NODE_ENV`(운영에서 쿠키 `Secure`)로 한다 (가정). 선택 환경 변수 `CORS_ORIGIN`(쉼표 구분 허용 출처)을 두며, 비우면 CORS 헤더를 보내지 않는다.
+- 그 외 환경 변수는 `DATABASE_URL`, `PORT`, `NODE_ENV`(운영에서 쿠키 `Secure`)로 한다 (가정). 선택 환경 변수 `CORS_ORIGIN`(쉼표 구분 허용 출처)을 두며, 비우면 CORS 헤더를 보내지 않는다. 선택 환경 변수 `GOOGLE_CLIENT_ID`(FR-18)는 비우면 Google 로그인이 모두 401이다. 프론트는 `VITE_API_URL`, `VITE_GOOGLE_CLIENT_ID`(비우면 Google 버튼을 그리지 않음)를 쓴다.
 - 환경 변수 읽기와 필수 값 검증은 `backend/src/config.ts` 한 곳에서만 한다. 필수 값이 없으면 서버는 시작하지 않는다 (가정).
 - `.env`는 Git에 올리지 않고 `.env.example`(값 없는 목록)만 올린다 (가정).
 - 튜닝 값(bcrypt cost 10, 풀 최대 20, 본문 100KB, 토큰 만료 15분/7일)은 PRD 값을 `config.ts`에 상수로 둔다 (NFR-05, NFR-07, NFR-10, PRD 6.4).
@@ -165,8 +171,8 @@ PRD 7.4를 그대로 따른다. 여기서는 위치와 검증 방법만 정한�
 
 ### 5.3 운영
 
-- **배포:** 단일 서버에서 Express가 `frontend/dist`를 정적 서빙하고 `/api`를 처리한다. 같은 출처이므로 운영에서는 `CORS_ORIGIN`을 비워 CORS를 쓰지 않는다 (PRD 7.2). 개발 등 다른 출처에서 직접 호출할 때만 `CORS_ORIGIN`에 출처를 넣는다 (`app.ts`, 의존성 없이 직접 헤더 설정).
-- **개발 환경:** Vite 개발 서버는 `/api`를 백엔드로 프록시해 운영과 같은 출처처럼 동작시킨다 (가정, 쿠키 경로 유지 목적).
+- **배포:** 프론트(`frontend/dist`)와 백엔드를 별도 서버에 배포한다 (PRD 7.2). 프론트 빌드 시 `VITE_API_URL`에 백엔드 주소(끝에 `/` 없이)를 넣고, 백엔드 `CORS_ORIGIN`에 프론트 출처를 넣는다 (`app.ts`, 의존성 없이 직접 헤더 설정). 운영 Refresh 쿠키는 `SameSite=None; Secure`다.
+- **개발 환경:** Vite 프록시를 쓰지 않는다. 프론트 `VITE_API_URL=http://localhost:3000`, 백엔드 `CORS_ORIGIN=http://localhost:5173`으로 운영과 같은 방식(CORS + `withCredentials`)으로 호출한다. `localhost`는 포트가 달라도 같은 사이트라 개발 Refresh 쿠키는 `SameSite=Strict`로 동작한다.
 - **DB 스키마:** `backend/db/schema.sql` 한 파일로 관리하고 수동 적용한다. 마이그레이션 도구는 도입하지 않는다 (가정, PRD 8장 "스키마 SQL 파일").
 - **헬스체크:** Day 1 완료 기준에 따라 헬스체크 API를 둔다 (PRD 8장). 경로는 `/api/health`다 (가정).
 - **모니터링·알림·이중화는 만들지 않는다** (PRD 4.2). 병목 대응은 인덱스·커넥션 풀을 먼저, 필요 시 프로세스 확장 순서로 한다 (R-03, 가정).
@@ -178,7 +184,7 @@ PRD 7.4를 그대로 따른다. 여기서는 위치와 검증 방법만 정한�
 ```
 team-caltalk/
 ├── CLAUDE.md
-├── docs/            # 1~8번 문서
+├── docs/            # 1~9번 문서
 ├── frontend/        # React 앱 (Vite)
 ├── backend/         # Express API 서버
 └── loadtest/        # k6 스크립트, 부하용 시드 (NFR-03)
@@ -191,14 +197,19 @@ team-caltalk/
 
 ```
 frontend/
-├── index.html
+├── index.html                # 저장된 테마·언어 선적용 스크립트, Google Identity Services 스크립트
 ├── package.json
 ├── tsconfig.json
-├── vite.config.ts            # @tailwindcss/vite 플러그인, /api 프록시
+├── .env.example              # VITE_API_URL, VITE_GOOGLE_CLIENT_ID
+├── vite.config.ts            # react, @tailwindcss/vite 플러그인 (프록시 없음)
+├── test/                     # node:test 자동화 테스트 (*.test.ts, helpers.ts)
 └── src/
     ├── main.tsx              # 진입점. index.css import, QueryClientProvider
-    ├── index.css             # 유일한 CSS. @import "tailwindcss"; (+ 필요 시 @theme)
+    ├── index.css             # 유일한 CSS. @import "tailwindcss"; + @theme 색상 토큰, .dark 블록
     ├── App.tsx               # 앱 시작 시 재발급 시도, 화면 상태에 따라 pages 선택
+    ├── i18n.ts               # i18next 초기화(기본 ko), 오류 문구 번역 함수
+    ├── locales/
+    │   └── ko.ts, en.ts          # 화면 문구 사전(같은 키 구조), en.ts에 한국어 오류 문구 → 영어 대응표
     ├── pages/
     │   ├── LoginPage.tsx         # WF-01
     │   ├── SignupPage.tsx        # WF-02
@@ -209,17 +220,19 @@ frontend/
     │   ├── Button.tsx, Input.tsx, Badge.tsx   # 반복 클래스 묶음 추출본
     │   ├── Header.tsx                         # 공통 헤더
     │   ├── TodoList.tsx, TodoRow.tsx, FilterBar.tsx
-    │   ├── CalendarGrid.tsx
-    │   ├── TodoModal.tsx                      # WF-05
+    │   ├── CalendarGrid.tsx, CalendarCell.tsx
+    │   ├── CategoryRow.tsx                    # WF-07 행(인라인 이름 변경·삭제)
+    │   ├── TodoModal.tsx, TodoForm.tsx        # WF-05
     │   └── ConfirmDialog.tsx                  # WF-06, 카테고리 삭제 확인
     ├── hooks/
-    │   ├── useAuth.ts, useApiClient.ts, useProfile.ts
+    │   ├── useAuth.ts, useGoogleButton.ts, useProfile.ts
+    │   ├── useHeader.ts, useNavigation.ts, useLang.ts
     │   ├── useCategories.ts
     │   ├── useTodos.ts, useTodoMutations.ts, useTodoForm.ts
     │   └── useCalendarMonth.ts
     ├── stores/
     │   ├── authStore.ts          # Access Token(메모리), 로그인 여부
-    │   └── uiStore.ts            # 현재 페이지(초기값 login), 탭, 필터, 캘린더 월, 열린 모달
+    │   └── uiStore.ts            # 현재 페이지(초기값 login), 탭, 필터, 캘린더 월, 열린 모달, 테마
     ├── api/
     │   ├── client.ts             # axios 인스턴스: 요청 인터셉터로 Bearer 첨부, 응답 인터셉터로 401 시 재발급 1회(동시 401은 재발급 1개 공유) 후 재시도
     │   ├── queryClient.ts        # QueryClient 단일 인스턴스. main.tsx(Provider)와 client.ts(재발급 실패 시 clear)가 import
@@ -237,8 +250,9 @@ frontend/
 | `stores/`     | Zustand store. UI 상태와 인증 상태만                                                                             | 서버 데이터 캐시                     |
 | `api/`        | HTTP 호출 함수. 토큰 첨부와 401 재발급 처리는 `client.ts` 한 곳                                                  | React 코드, 상태                     |
 | `lib/`        | 의존성 없는 순수 함수                                                                                            | React, store, api import             |
+| `locales/`    | 언어별 화면 문구 사전(`ko.ts`, `en.ts`)                                                                          | 로직                                 |
 
-- 디렉토리는 위 6개로 시작하고 하위 디렉토리로 더 쪼개지 않는다. 파일이 늘어 찾기 어려워질 때만 나눈다 (가정).
+- 디렉토리는 위 7개로 시작하고 하위 디렉토리로 더 쪼개지 않는다. 파일이 늘어 찾기 어려워질 때만 나눈다 (가정).
 - 화면 목록은 PRD 7.2의 5개(로그인/가입/메인/카테고리 관리/내 정보)다.
 
 ### 6.3 백엔드 (`backend/`)
@@ -248,6 +262,7 @@ backend/
 ├── package.json
 ├── tsconfig.json
 ├── .env.example
+├── .env.test.example         # 테스트 전용 DB의 DATABASE_URL (npm test가 --env-file=.env.test로 읽음)
 ├── swagger.yaml              # API 명세 원본 (요청·응답·상태 코드)
 ├── db/
 │   ├── schema.sql            # 테이블·제약·인덱스 (users, categories, todos, refresh_tokens)
@@ -256,19 +271,19 @@ backend/
 ├── test/                     # node:test 자동화 테스트 (*.test.ts, helpers.ts)
 └── src/
     ├── server.ts             # 진입점: config 로드, app 시작(listen)
-    ├── app.ts                # Express 조립: CORS 헤더(`CORS_ORIGIN`), 본문 100KB 제한, cookie-parser, 라우터 마운트, 정적 서빙, 오류 핸들러
+    ├── app.ts                # Express 조립: CORS 헤더(`CORS_ORIGIN`), 본문 100KB 제한, cookie-parser, 라우터 마운트, 오류 핸들러
     ├── config.ts             # 환경 변수 읽기·검증, 상수(PRD 값)
     ├── db.ts                 # pg Pool, DATE 문자열 파서(OID 1082), 트랜잭션 헬퍼
     ├── errors.ts             # 오류 클래스(400 검증 / 401 인증 / 404 없음, 그 외 상태는 `HttpError`)
     ├── routes/
-    │   ├── authRoutes.ts         # 가입, 로그인, 재발급, 로그아웃
-    │   ├── userRoutes.ts         # 내 정보 수정, 비밀번호 변경 (P1)
+    │   ├── authRoutes.ts         # 가입, 로그인, Google 로그인, 재발급, 로그아웃
+    │   ├── userRoutes.ts         # 내 정보 조회, 내 정보 수정·비밀번호 변경 (P1)
     │   ├── categoryRoutes.ts     # 목록, 생성, 이름 변경, 삭제
     │   ├── todoRoutes.ts         # 등록, 수정, 삭제, 목록(필터), 월 조회
     │   ├── healthRoutes.ts       # 헬스체크
     │   └── docsRoutes.ts         # 개발 환경 전용 /api-docs (CDN swagger-ui로 swagger.yaml 표시)
     ├── services/
-    │   ├── authService.ts        # 가입(+기본 카테고리), 로그인, 토큰 발급·회전·폐기
+    │   ├── authService.ts        # 가입(+기본 카테고리), 로그인, Google ID 토큰 검증·계정 연결(BR-19), 토큰 발급·회전·폐기
     │   ├── userService.ts
     │   ├── categoryService.ts    # BR-13, BR-17, BR-18
     │   └── todoService.ts        # BR-06, BR-08, BR-10, BR-12, 소유권 조건
@@ -296,7 +311,7 @@ backend/
 
 | 항목                                  | 내용                                                                                                                                                                                                                                                    |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `useApiClient` 훅과 401 재발급 공유   | PRD 7.4는 컴포넌트에서 `fetch` 직접 호출 금지와 훅 `useApiClient`를 정하고, 6.4는 동시 401 시 재발급 요청 1개 공유를 요구한다. 훅 인스턴스와 별개로 공유 상태가 필요하므로 이 문서는 `api/client.ts`(순수 모듈)에 두고 훅이 이를 감싸는 것으로 가정했다 |
+| `useApiClient` 훅과 401 재발급 공유   | (해소) `useApiClient` 훅은 만들지 않았다. 토큰 첨부·401 재발급 공유는 `api/client.ts`의 axios 인터셉터가 맡고 훅은 `api/` 함수를 직접 호출한다 (PRD v0.17 7.4) |
 | 비밀번호 허용 문자                    | NFR-07은 영문·숫자·ASCII 특수문자만 허용(가정)한다고 하나 도메인 정의서 3.1 제약에는 문자 집합 제한이 없다. `validators/`에 어느 쪽을 반영할지 정해야 한다                                                                                              |
 | NFR-11(메모리 카운터)과 프로세스 확장 | R-03이 Node cluster 확장을 언급하는데, 메모리 카운터는 프로세스별로 따로 센다. 확장 시 제한 횟수가 달라진다                                                                                                                                             |
 | 저장소 구성                           | `frontend/`·`backend/`·`loadtest/` 이름과 모노레포 구성은 문서에 없다                                                                                                                                                                                   |

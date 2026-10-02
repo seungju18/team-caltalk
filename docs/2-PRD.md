@@ -17,6 +17,12 @@
 | 0.9  | seungju18 | 문서 정합성 점검: 7.2 라우팅 사유의 화면 목록에 카테고리 관리(FR-16, FR-17, 와이어프레임 WF-07) 추가                                                                       | 2026-09-30 14:47 |
 | 0.10 | seungju18 | 8번 문서 8장 결정 반영: KPI-04 MVP 측정 제외(2.2), 백엔드 TS 실행 방식 추가(7.2), `useCalendarMonth`에 월 할일 조회 역할 추가(7.4)                                         | 2026-09-30 15:06 |
 | 0.11 | seungju18 | 7.2 자동화 테스트(`node:test`) 행 추가, 배포 행에 운영 `CORS_ORIGIN` 비움 반영                                                                                             | 2026-10-01       |
+| 0.12 | seungju18 | 다크 모드를 범위에 포함: 4.2 범위 외에서 제거, 7.2 테마 전환 행 추가, 7.4 `index.css`에 `.dark` 블록 허용 | 2026-10-01       |
+| 0.13 | seungju18 | 다국어(한국어·영어)를 범위에 포함: 4.2 범위 외에서 제거, 7.2 다국어 행 추가 | 2026-10-01       |
+| 0.14 | seungju18 | Google 로그인 추가: FR-18, 7.1 인증 스택에 `google-auth-library` | 2026-10-01       |
+| 0.15 | seungju18 | 배포를 프론트·백엔드 분리로 변경: 7.2 배포 행, 6.4 Refresh 쿠키 운영 `SameSite=None; Secure`와 Origin 확인 | 2026-10-01       |
+| 0.16 | seungju18 | 7.2 배포 행: 개발 환경도 vite proxy 없이 직접 호출 | 2026-10-01       |
+| 0.17 | seungju18 | 구현 반영: 7.2 자동화 테스트 행에 프론트 `frontend/test` 추가, 7.4 훅 표를 실제 훅으로 갱신(`useApiClient` 제거, 401 재발급은 `api/client.ts`) | 2026-10-02       |
 
 > 기준 문서: `docs/1-domain-definition.md` v0.7 (이하 "도메인 정의서"). 용어, 엔티티, 규칙(BR), 유스케이스(UC), 수용 기준(AC)은 도메인 정의서를 원본으로 하고 이 문서에서는 ID로만 참조한다. `(가정)` 표시는 근거 요구사항 없이 이 PRD에서 정한 값이다.
 
@@ -88,7 +94,6 @@
 | --------------------------------- | ---------------------------- |
 | 접근성(WCAG, 스크린리더 대응)     | 입력 조건                    |
 | 네이티브 모바일 앱, PWA·오프라인  | 반응형 웹만 지원 (입력 조건) |
-| 다국어(i18n), 다크 모드           | 2일 일정 (가정)              |
 | 회원 탈퇴                         | OI-04                        |
 | 캘린더 연속 막대 렌더링, FR-15    | P2 (OI-10)                   |
 | 운영 모니터링·알림 시스템, 이중화 | 1인 예산 (가정)              |
@@ -116,6 +121,7 @@
 | FR-15 | 캘린더 날짜 셀에서 등록 | 캘린더 날짜 셀 클릭 시 해당 날짜를 시작일자·종료일자로 채운 등록 화면 열기 (가정)                      | UC-05   | REQ-04                                 | AC-05 (기본값만 해당 날짜로 대체) | P2       |
 | FR-16 | 카테고리 이름 변경      | 새 이름으로 변경, 소유자 내 중복 거부. '기본'은 변경 불가                                              | UC-13   | REQ-13                                 | AC-10-1, AC-10-2, AC-10-4, BR-17  | P0       |
 | FR-17 | 카테고리 삭제           | 확인 후 삭제. 소속 할일은 모두 '기본' 카테고리로 이동하고 할일은 삭제하지 않음. '기본'은 삭제 불가     | UC-14   | REQ-13                                 | AC-10-3, AC-10-4, BR-17, BR-18    | P0       |
+| FR-18 | Google 로그인           | 로그인 화면의 Google 버튼으로 로그인. 같은 이메일의 가입된 계정에 자동 연결, 계정이 없으면 가입 안내 | UC-02   | REQ-14                                 | BR-19                             | P1       |
 
 ### 5.1 FR 보충 결정
 
@@ -166,7 +172,7 @@
 | 서명 키         | 환경 변수 `JWT_ACCESS_SECRET`                                                                       | 환경 변수 `JWT_REFRESH_SECRET` (Access와 다른 키)                                          |
 | payload         | `sub`(사용자 ID), `type: "access"`                                                                  | `sub`(사용자 ID), `jti`(UUID), `type: "refresh"`                                           |
 | 만료            | 15분 (가정)                                                                                         | 7일 (가정)                                                                                 |
-| 클라이언트 보관 | 로그인·재발급 응답 본문으로 받아 **Zustand 메모리**에만 보관. localStorage·sessionStorage 저장 금지 | `HttpOnly; SameSite=Strict; Path=/api/auth` 쿠키 (운영 환경 `Secure`). JS에서 읽을 수 없음 |
+| 클라이언트 보관 | 로그인·재발급 응답 본문으로 받아 **Zustand 메모리**에만 보관. localStorage·sessionStorage 저장 금지 | `HttpOnly; Path=/api/auth` 쿠키. 개발 `SameSite=Strict`, 운영 `SameSite=None; Secure` (프론트·백엔드 다른 사이트, 7.2 배포). JS에서 읽을 수 없음 |
 | 전송            | `Authorization: Bearer <token>` 헤더                                                                | 쿠키로 자동 전송 (`/api/auth/refresh`, `/api/auth/logout`에만)                             |
 | 서버 저장       | 없음                                                                                                | `refresh_tokens` 테이블에 `jti`, 사용자 ID, 만료일시 저장 (토큰 원문은 저장하지 않음)      |
 | 무효화          | 불가. 만료(최대 15분)까지 유효 (R-07)                                                               | DB 행 삭제로 즉시 무효화                                                                   |
@@ -184,7 +190,7 @@
   - 동시에 여러 요청이 401이면 재발급 요청 1개를 공유한다 (재사용 감지 오탐 방지).
   - 재발급이 실패하면 Zustand 인증 상태와 TanStack Query 캐시를 비우고 로그인 화면으로 이동한다.
   - 새로고침·재방문 시 메모리에 Access가 없으므로 앱 시작 시 재발급을 호출해 로그인 상태를 복구한다.
-- **CSRF:** Access는 헤더로만 전송되어 CSRF 대상이 아니다. Refresh 쿠키는 `SameSite=Strict`와 `Path` 제한으로 보호한다.
+- **CSRF:** Access는 헤더로만 전송되어 CSRF 대상이 아니다. Refresh 쿠키는 `Path` 제한으로 범위를 좁히고, 운영(`SameSite=None`)에서는 쿠키를 쓰는 재발급·로그아웃 요청의 `Origin`이 `CORS_ORIGIN`에 없으면 403으로 거부한다.
 
 **재발급 흐름**
 
@@ -220,7 +226,7 @@ sequenceDiagram
 | 백엔드     | Node.js, TypeScript, Express, pg                                                                       |
 | DB         | PostgreSQL 17                                                                                          |
 | 스타일     | Tailwind CSS (v4, Vite 플러그인 `@tailwindcss/vite`). **className 직접 적용 방식만 사용** (7.4)        |
-| 인증       | `jsonwebtoken` (JWT Access Token·Refresh Token 발급·검증, 6.4), `bcrypt` (비밀번호 해시, NFR-07)       |
+| 인증       | `jsonwebtoken` (JWT Access Token·Refresh Token 발급·검증, 6.4), `bcrypt` (비밀번호 해시, NFR-07), `google-auth-library` (Google ID 토큰 검증, FR-18) |
 | 금지       | Prisma (및 ORM 전반, 가정)                                                                             |
 
 - 상태 관리 역할 분리: 서버 데이터(할일·카테고리·사용자)는 TanStack Query, UI 상태(현재 탭, 필터, 캘린더 월, 로그인 여부)는 Zustand.
@@ -233,12 +239,14 @@ sequenceDiagram
 | 빌드 도구        | Vite (제안)                                                                                                                               | React 19 + TS 프로젝트 생성·개발 서버. 사실상 필수                                       |
 | 백엔드 TS 실행   | 빌드 없이 Node.js 내장 타입 제거로 실행 (`node src/server.ts`, 개발은 `node --watch`). 타입 검사는 `tsc --noEmit`. Node.js 24 이상 (가정) | 추가 의존성(`tsx`, `ts-node` 등) 없음. `enum` 등 타입 제거가 불가능한 문법은 쓰지 않는다 |
 | 부하 테스트 도구 | k6 (제안)                                                                                                                                 | NFR-03 실행용. 앱 의존성 아님                                                            |
-| 자동화 테스트    | Node.js 내장 `node:test`로 `backend/test/*.test.ts` 실행 (`npm test`, 가정)                                                               | 추가 의존성 없음. 서버 규칙 검증용                                                       |
+| 자동화 테스트    | Node.js 내장 `node:test`로 `backend/test/*.test.ts`, `frontend/test/*.test.ts`(React 없는 `lib/`·`stores/`·`api/`·`locales/`) 실행 (`npm test`, 가정) | 추가 의존성 없음. 서버 규칙·프론트 순수 로직 검증용 |
 | 쿠키 파싱        | `cookie-parser` (제안)                                                                                                                    | Refresh Token 쿠키 읽기 (6.4)                                                            |
 | 라우팅           | 사용하지 않음 (가정)                                                                                                                      | 화면이 로그인/가입/메인(탭)/카테고리 관리/내 정보 뿐이라 Zustand 상태로 전환             |
 | 날짜·캘린더 UI   | 라이브러리 사용하지 않음 (가정)                                                                                                           | `<input type="date">` + Tailwind `grid grid-cols-7` 월 달력으로 충분                     |
 | 입력 검증        | 라이브러리 사용하지 않음 (가정)                                                                                                           | 제약 항목이 적어 수동 검증 함수로 충분                                                   |
-| 배포             | 단일 서버에서 Express가 프론트 빌드 정적 파일 동시 서빙 (가정). 운영은 `CORS_ORIGIN`을 비워 CORS 헤더를 보내지 않는다                     | 같은 출처로 운영은 CORS·쿠키 설정 불필요(`CORS_ORIGIN` 비움), 1인 예산                   |
+| 다국어           | 한국어·영어. `i18next` + `react-i18next`. 기본값 한국어 고정(브라우저 언어를 따르지 않음), 헤더 버튼으로 전환, 선택값은 `localStorage`의 `lang` 키에 저장. 로그인·가입 화면에는 버튼 없이 저장된 언어만 따른다. 서버 오류 문구(한국어 고정)는 프론트에서 문구 → 영어 대응표로 번역한다 (가정) | 사용자 요청. 라이브러리는 사용자 선택. 백엔드 변경 없음. `localStorage` 허용은 테마·언어 2건 |
+| 테마(다크 모드)  | 헤더 버튼으로 라이트·다크 전환. 기본값 라이트, 선택값은 `localStorage`의 `theme` 키에 저장해 다음 접속에도 유지 (가정). OS 설정은 따르지 않는다 | 사용자 요청. 테마는 민감 정보가 아니라 `localStorage` 사용을 테마·언어 2건만 허용 (토큰은 여전히 메모리) |
+| 배포             | 프론트(`frontend/dist` 정적 호스팅)와 백엔드(Express)를 별도 서버에 배포. 프론트는 `VITE_API_URL`(백엔드 주소)로 호출하고 `withCredentials`로 쿠키를 보낸다. 백엔드는 `CORS_ORIGIN`에 프론트 출처를 넣는다 | 사용자 결정. 개발도 프록시 없이 `VITE_API_URL=http://localhost:3000`으로 직접 호출(백엔드 `CORS_ORIGIN=http://localhost:5173`) |
 
 ### 7.3 구현 유의사항
 
@@ -260,7 +268,7 @@ sequenceDiagram
   - CSS Modules (`*.module.css`), CSS-in-JS (styled-components, emotion 등)
   - `style={{ ... }}` 인라인 스타일 객체. 단, 캘린더 막대 위치처럼 런타임 계산 값이 필요한 경우만 예외
   - `@apply`로 커스텀 클래스 만들기
-- **유일한 CSS 파일:** 앱 진입점의 `src/index.css` 1개. 내용은 `@import "tailwindcss";`와 필요 시 `@theme` 설정만. `main.tsx`에서만 import한다.
+- **유일한 CSS 파일:** 앱 진입점의 `src/index.css` 1개. 내용은 `@import "tailwindcss";`, `@theme` 설정, 다크 토큰을 덮어쓰는 `.dark { ... }` 블록 1개만. `main.tsx`에서만 import한다.
 - 반복되는 클래스 묶음은 CSS로 빼지 않고 **작은 컴포넌트로 추출**한다 (예: `Button`, `Input`, `Badge`).
 - 조건부 클래스는 템플릿 리터럴로 조합한다. 추가 라이브러리(`clsx` 등)는 쓰지 않는다 (가정).
 - 반응형은 `md:`, `lg:` 접두사로 처리한다 (NFR-12).
@@ -280,13 +288,18 @@ sequenceDiagram
 | 훅                 | 역할                                                                 | 관련              |
 | ------------------ | -------------------------------------------------------------------- | ----------------- |
 | `useAuth`          | 로그인·로그아웃·회원가입 mutation, 인증 상태                         | FR-01~03          |
-| `useApiClient`     | axios 인터셉터로 Access Token 헤더 첨부, 401 시 재발급 1회 후 재시도 | FR-04, 6.4        |
 | `useCategories`    | 카테고리 목록 조회, 생성·이름 변경·삭제 mutation                     | FR-05, 06, 16, 17 |
 | `useTodos`         | 필터별 할일 목록 조회                                                | FR-10             |
 | `useTodoMutations` | 할일 등록·수정·삭제, 성공 시 목록·캘린더 캐시 무효화                 | FR-07~09          |
 | `useTodoForm`      | 폼 상태, 날짜 기본값 오늘, BR-08·BR-11 화면 검증                     | FR-07, FR-08      |
 | `useCalendarMonth` | 현재 월 상태, 월 이동, 월 할일 조회, 월 그리드(날짜 × 할일) 생성     | FR-11             |
 | `useProfile`       | 내 정보 수정, 비밀번호 변경                                          | FR-13             |
+| `useHeader`        | 헤더 이름 조회(`GET /api/users/me`), 화면 이동·테마·언어·로그아웃, 모바일 메뉴 | FR-03, UC-11 |
+| `useNavigation`    | 화면·탭·모달·테마 전환 (uiStore 구독)                                | FR-12             |
+| `useLang`          | 화면 문구·오류 문구 번역, 언어 전환                                  | 7.2 다국어        |
+| `useGoogleButton`  | Google 버튼 렌더링, credential 수신                                  | FR-18             |
+
+- 토큰 첨부와 401 재발급 1회(동시 401은 재발급 1개 공유)는 훅이 아니라 `api/client.ts`의 axios 인터셉터가 맡는다 (6.4). 훅 인스턴스와 무관하게 공유 상태가 필요하기 때문이다.
 
 ## 8. 일정 (2일 마일스톤)
 

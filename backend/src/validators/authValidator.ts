@@ -58,6 +58,15 @@ export function validateLogin(input: unknown) {
   return { email: (b.email as string).trim(), password: b.password as string }
 }
 
+// Google 로그인: GIS가 준 ID 토큰(credential) 문자열만 본다
+export function validateGoogleLogin(input: unknown) {
+  const { credential } = body(input)
+  if (typeof credential !== 'string' || credential === '') {
+    throw new ValidationError([{ field: 'credential', reason: 'Google 인증 정보가 필요합니다' }])
+  }
+  return { credential }
+}
+
 // BR-16: email 필드는 읽지 않는다
 export function validateNameUpdate(input: unknown) {
   const errors: FieldError[] = []

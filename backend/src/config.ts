@@ -33,6 +33,8 @@ export const config = {
   jwtRefreshSecret: JWT_REFRESH_SECRET,
   // 선택. 쉼표로 구분한 허용 출처. 비우면 같은 출처만 (PRD 7.2)
   corsOrigins: process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean) ?? [],
+  // 선택. Google 로그인 OAuth 클라이언트 ID. 비우면 Google 로그인은 모두 401
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? '',
 }
 
 export const BCRYPT_COST = 10 // NFR-07

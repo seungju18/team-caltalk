@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme {
+  /* 배경 단계 */
+  --color-bg: #ffffff;           /* 앱 전체·캘린더 칸 */
+  --color-surface: #ffffff;      /* 헤더·사이드바·모달 */
+  --color-muted-bg: #f7f7f7;     /* 요일 머리글 줄, 사이드바 선택 항목, 미니 캘린더 */
+  --color-surface-hover: #f2f2f2;
+  --color-today: #f3f8fb;        /* 오늘 칸 배경 */
+
+  /* 선 */
+  --color-line: #e5e5e5;         /* 캘린더 격자·구분선 */
+  --color-line-strong: #cccccc;  /* 입력란·버튼 테두리 */
+  --color-today-line: #444444;   /* 오늘 칸 테두리 */
+
+  /* 글자 */
+  --color-fg: #222222;           /* 본문·날짜 숫자 */
+  --color-fg-muted: #777777;     /* 보조 정보(카테고리 이름, 기간) */
+  --color-fg-subtle: #b3b3b3;    /* 이전·다음 달 날짜, placeholder */
+
+  /* 강조 */
+  --color-primary: #6c5ce7;        /* 주요 버튼, 선택된 탭, 체크된 체크박스 */
+  --color-primary-hover: #5a4bd4;
+  --color-primary-fg: #6c4fe0;     /* 배경 위 보라 글자(링크, 캘린더 할일 제목) */
+  --color-danger: #e02020;         /* 일요일, 오류 문구, 지연 */
+  --color-success: #17924a;        /* 완료 */
+}
+
+/* <html class="dark">일 때 덮어쓴다. 클래스는 테마 버튼이 붙이고 뗀다 */
+.dark {
+  --color-bg: #121212;
+  --color-surface: #1a1a1a;
+  --color-muted-bg: #1a1a1a;
+  --color-surface-hover: #222222;
+  --color-today: #1c2326;
+  --color-line: #2c2c2c;
+  --color-line-strong: #444444;
+  --color-today-line: #444444;
+  --color-fg: #e6e6e6;
+  --color-fg-muted: #9a9a9a;
+  --color-fg-subtle: #6b6b6b;
+  --color-primary: #7b68ee;
+  --color-primary-hover: #6a56e0;
+  --color-primary-fg: #a89bff;
+  --color-danger: #ff4040;
+  --color-success: #2ecc71;
+}

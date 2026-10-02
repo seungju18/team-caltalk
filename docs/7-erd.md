@@ -9,6 +9,7 @@
 | 0.1  | seungju18 | ERD 초안 작성 (PRD v0.8, 도메인 정의서 v0.7 기준)                                                          | 2026-09-30       |
 | 0.2  | seungju18 | 8번 문서 8장 결정 반영: `updated_at` 갱신 방식(2.3), 로그인 이력 테이블 미생성 확정(4장 1), 기준 PRD v0.10 | 2026-09-30 15:06 |
 | 0.3  | seungju18 | 4장 5 문자열 비교 기준에 구현 결과(앞뒤 공백만 제거, 대소문자 구분) 추가, 기준 PRD v0.11                     | 2026-10-01       |
+| 0.4  | seungju18 | users에 `google_sub` 추가 (도메인 v0.8 BR-19, PRD v0.14) | 2026-10-01       |
 
 team-caltalk의 PostgreSQL 17 물리 데이터 모델이다. 도메인 정의서 3장(엔티티)과 PRD 6.4·7.3(물리 설계)을 근거로 작성했다.
 
@@ -30,6 +31,7 @@ erDiagram
         varchar email UK "254자, 변경 불가"
         varchar password_hash "bcrypt 해시"
         varchar name "1~30자"
+        varchar google_sub UK "연결된 Google 계정 ID, NULL 허용"
         timestamptz created_at "가입일시"
     }
 
@@ -70,6 +72,7 @@ erDiagram
 | email         | `varchar(254)` | NOT NULL, UK                              | 도메인 3.1, BR-02, BR-16, OI-01, PRD 7.3                  |
 | password_hash | `varchar(60)`  | NOT NULL                                  | 도메인 3.1, PRD NFR-07. 길이 60은 bcrypt 출력 길이 (가정) |
 | name          | `varchar(30)`  | NOT NULL                                  | 도메인 3.1                                                |
+| google_sub    | `varchar(255)` | NULL, UK                                  | BR-19. Google ID 토큰의 `sub`. 연결 전 NULL               |
 | created_at    | `timestamptz`  | NOT NULL, DEFAULT `now()`                 | 도메인 3.1 (가입일시), PRD KPI-03                         |
 
 ### 2.2 categories
@@ -112,6 +115,7 @@ erDiagram
 | 대상           | 제약 / 인덱스                                                      | 근거                |
 | -------------- | ------------------------------------------------------------------ | ------------------- |
 | users          | `UNIQUE (email)`                                                   | BR-02, PRD 7.3      |
+| users          | `UNIQUE (google_sub)`                                              | BR-19               |
 | categories     | `UNIQUE (user_id, name)`                                           | 도메인 3.2, PRD 7.3 |
 | categories     | `CREATE UNIQUE INDEX ... ON categories (user_id) WHERE is_default` | BR-05, PRD 7.3      |
 | todos          | `CHECK (end_date >= start_date)`                                   | BR-08, PRD 7.3      |

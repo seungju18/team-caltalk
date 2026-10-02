@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
+import { OAuth2Client } from 'google-auth-library'
 import type pg from 'pg'
 import { config, BCRYPT_COST, ACCESS_TOKEN_TTL_SEC, REFRESH_TOKEN_TTL_SEC } from '../config.ts'
 import { pool, withTransaction } from '../db.ts'
-import { UnauthorizedError, ValidationError } from '../errors.ts'
+import { HttpError, UnauthorizedError, ValidationError } from '../errors.ts'
 
 export type Tokens = { accessToken: string; refreshToken: string }
 
@@ -59,11 +60,50 @@ export async function login(email: string, password: string): Promise<Tokens> {
   if (rows.length === 0 || !(await bcrypt.compare(password, rows[0].password_hash))) {
     throw new UnauthorizedError('식별자 또는 비밀번호가 올바르지 않습니다')
   }
-  const userId = rows[0].id
+  return startSession(rows[0].id)
+}
+
+// 로그인 성공 처리 (비밀번호·Google 공용): 만료된 Refresh 정리 후 발급
+function startSession(userId: number): Promise<Tokens> {
   return withTransaction(async (client) => {
     await client.query('DELETE FROM refresh_tokens WHERE user_id = $1 AND expires_at < now()', [userId])
     return issueTokens(client, userId)
   })
+}
+
+type GooglePayload = { sub: string; email?: string; email_verified?: boolean }
+const googleClient = new OAuth2Client()
+
+// GOOGLE_CLIENT_ID가 비어 있으면 검증하지 않고 실패한다
+let verifyGoogleToken = async (idToken: string): Promise<GooglePayload | undefined> => {
+  if (!config.googleClientId) return undefined
+  const ticket = await googleClient.verifyIdToken({ idToken, audience: config.googleClientId })
+  return ticket.getPayload()
+}
+
+// 테스트에서 실제 Google 호출 없이 검증 결과를 바꾸기 위한 교체 함수
+export function setGoogleVerifier(fn: typeof verifyGoogleToken) {
+  verifyGoogleToken = fn
+}
+
+const GOOGLE_FAILED = 'Google 인증에 실패했습니다'
+
+// 방식 B: 이미 가입된 계정만. sub로 찾고, 없으면 같은 이메일(대소문자 무시) 계정에 처음 연결한다
+export async function googleLogin(credential: string): Promise<Tokens> {
+  const payload = await verifyGoogleToken(credential).catch(() => undefined)
+  if (!payload || payload.email_verified !== true || !payload.email) throw new UnauthorizedError(GOOGLE_FAILED)
+
+  const linked = await pool.query<{ id: number }>('SELECT id::int FROM users WHERE google_sub = $1', [payload.sub])
+  if (linked.rows.length > 0) return startSession(linked.rows[0].id)
+
+  const { rows } = await pool.query<{ id: number; google_sub: string | null }>(
+    'SELECT id::int, google_sub FROM users WHERE lower(email) = lower($1)',
+    [payload.email],
+  )
+  if (rows.length === 0) throw new HttpError(404, '가입된 계정이 없습니다. 먼저 회원가입하세요')
+  if (rows[0].google_sub !== null) throw new UnauthorizedError(GOOGLE_FAILED)
+  await pool.query('UPDATE users SET google_sub = $1 WHERE id = $2', [payload.sub, rows[0].id])
+  return startSession(rows[0].id)
 }
 
 // 서명·만료·type 검증. 실패 시 null
