@@ -16,6 +16,7 @@ export default {
     name: '이름',
   },
   header: {
+    logo: '캘톡',
     category: '카테고리',
     profile: '내 정보',
     logout: '로그아웃',

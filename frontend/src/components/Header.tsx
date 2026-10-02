@@ -23,7 +23,7 @@ export default function Header() {
   return (
     <header className="h-14 bg-surface border-b border-line flex items-center justify-between px-4">
       <button type="button" onClick={h.goMain} className="text-lg font-bold">
-        team-caltalk
+        {t('header.logo')}
       </button>
       <div className="flex items-center gap-2">
         <div className="hidden md:flex items-center gap-2">

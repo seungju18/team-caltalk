@@ -16,6 +16,7 @@ export default {
     name: 'Name',
   },
   header: {
+    logo: 'team-caltalk',
     category: 'Categories',
     profile: 'My info',
     logout: 'Log out',
