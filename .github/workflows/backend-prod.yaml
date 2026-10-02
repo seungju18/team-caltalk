@@ -1,0 +1,22 @@
+name: Backend Production
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v42
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_BACKEND }}
+          # 프론트·백엔드 도메인이 달라 Refresh 쿠키는 SameSite=None; Secure여야 한다 (NODE_ENV=production일 때만 설정됨)
+          vercel-args: "--prod --env NODE_ENV=production"
