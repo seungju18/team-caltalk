@@ -97,4 +97,9 @@ export default {
     newPassword: '새 비밀번호',
     changing: '변경 중…',
   },
+  notFound: {
+    title: '페이지를 찾을 수 없습니다',
+    message: '주소가 잘못되었거나 없는 페이지입니다.',
+    home: '홈으로',
+  },
 }

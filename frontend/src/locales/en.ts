@@ -97,6 +97,11 @@ export default {
     newPassword: 'New password',
     changing: 'Changing…',
   },
+  notFound: {
+    title: 'Page not found',
+    message: 'The address is wrong or the page does not exist.',
+    home: 'Go home',
+  },
 }
 
 // 서버·화면 검증·안내 문구(한국어 고정) → 영어. 없으면 원문을 보여 준다 (i18n.ts tr)
