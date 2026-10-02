@@ -5,5 +5,8 @@
     "nodemon": "^3.1.14",
     "openapi-mock-express-middleware": "^4.4.0",
     "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4"
   }
 }
